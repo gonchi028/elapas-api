@@ -1,98 +1,254 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Elapas API — Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API REST para el **Sistema de Gestión de Servicios Públicos de Agua** de ELAPAS Sucre. Proyecto académico — 7mo Semestre, Gestión de Proyectos de Software.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Stack
 
-## Description
+| Capa | Tecnología |
+|------|------------|
+| Framework | NestJS 11 (TypeScript) |
+| ORM | Drizzle ORM |
+| Base de datos | PostgreSQL 15+ |
+| Autenticación | Better Auth (email/password) |
+| Documentación | Swagger / OpenAPI 3.0 |
+| Runtime | Node.js 18+ LTS |
+| Package manager | pnpm |
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Requisitos
 
-## Project setup
+- Node.js 18+
+- pnpm 9+
+- PostgreSQL 15+
+
+## Instalación
 
 ```bash
-$ pnpm install
+# Clonar el repositorio
+git clone <repo-url>
+cd elapas-api
+
+# Instalar dependencias
+pnpm install
+
+# Copiar variables de entorno
+cp .env.example .env
+# Editar .env con tus valores reales
+
+# Crear la base de datos en PostgreSQL
+createdb elapas
+
+# Aplicar el schema a la base de datos
+pnpm db:push
+
+# Iniciar el servidor en modo desarrollo
+pnpm start:dev
 ```
 
-## Compile and run the project
+El servidor inicia en `http://localhost:3000` (o el puerto definido en `PORT`).
+
+## Documentación de la API
+
+Swagger UI disponible en:
+
+```
+http://localhost:3000/docs
+```
+
+Spec OpenAPI en formato JSON:
+
+```
+http://localhost:3000/docs-json
+```
+
+## Comandos
+
+| Comando | Descripción |
+|---------|-------------|
+| `pnpm install` | Instalar dependencias |
+| `pnpm start:dev` | Servidor en modo desarrollo (watch) |
+| `pnpm start:prod` | Servidor en producción |
+| `pnpm build` | Compilar TypeScript a `dist/` |
+| `pnpm lint` | ESLint con auto-fix |
+| `pnpm format` | Prettier |
+| `pnpm test` | Tests unitarios |
+| `pnpm test:e2e` | Tests end-to-end |
+| `pnpm test -- src/ruta/al/file.spec.ts` | Un solo test |
+| `pnpm db:push` | Aplicar schema a la BD (dev) |
+| `pnpm db:generate` | Generar migración SQL |
+| `pnpm db:migrate` | Ejecutar migraciones |
+| `pnpm db:studio` | Drizzle Studio (visor de datos) |
+
+## Estructura del proyecto
+
+```
+src/
+├── main.ts                  # Entry point, Swagger, global prefix
+├── app.module.ts            # Módulo raíz
+├── db/
+│   ├── connection.ts        # Conexión Drizzle + DI provider
+│   ├── db.module.ts         # DbModule global (inyecta la BD)
+│   └── schema.ts            # Tablas, enums y relaciones
+├── auth/
+│   ├── auth.ts              # Configuración de Better Auth
+│   ├── auth.controller.ts   # Endpoints de autenticación
+│   ├── auth.module.ts
+│   ├── auth.guard.ts        # Guard de sesión
+│   ├── roles.guard.ts       # Guard de roles
+│   ├── roles.decorator.ts   # Decorador @Roles()
+│   └── dto/                 # DTOs de auth
+├── usuarios/                # CRUD de usuarios (admin)
+├── distritos/               # CRUD de distritos (admin)
+├── contratos/               # Gestión de contratos/catastro
+├── tarifas/                 # Pliego tarifario
+├── lecturas/                # Registro de lecturas de medidores
+├── facturas/                # Generación masiva de facturas
+├── pagos/                   # Pagos y generación de QR
+├── cortes/                  # Registro de cortes de servicio
+└── reportes/                # Reportes y dashboard
+```
+
+## Autenticación y Roles
+
+Better Auth gestiona la autenticación con email y contraseña. Todos los endpoints (excepto auth) requieren sesión activa.
+
+| Rol | Permisos |
+|-----|----------|
+| `admin` | Acceso total: usuarios, contratos, facturación, reportes |
+| `brigadista` | Lecturas, cortes, contratos (lectura) |
+| `ciudadano` | Sus contratos, facturas, pagos |
+
+## Módulos y Endpoints
+
+### Autenticación (`/api/auth`)
+
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| POST | `/api/auth/sign-up/email` | Registrarse | Pública |
+| POST | `/api/auth/sign-in/email` | Iniciar sesión | Pública |
+| POST | `/api/auth/sign-out` | Cerrar sesión | Sesión |
+| GET | `/api/auth/get-session` | Obtener sesión actual | Sesión |
+
+### Usuarios (`/api/usuarios`)
+
+| Método | Endpoint | Roles |
+|--------|----------|-------|
+| GET | `/api/usuarios` | admin |
+| GET | `/api/usuarios/:id` | admin |
+| POST | `/api/usuarios` | admin |
+| PUT | `/api/usuarios/:id` | admin |
+| DELETE | `/api/usuarios/:id` | admin |
+
+### Distritos (`/api/distritos`)
+
+| Método | Endpoint | Roles |
+|--------|----------|-------|
+| GET | `/api/distritos` | admin |
+| GET | `/api/distritos/:id` | admin |
+| POST | `/api/distritos` | admin |
+| PUT | `/api/distritos/:id` | admin |
+| DELETE | `/api/distritos/:id` | admin |
+
+### Contratos (`/api/contratos`)
+
+| Método | Endpoint | Roles |
+|--------|----------|-------|
+| GET | `/api/contratos` | admin, brigadista |
+| GET | `/api/contratos/mis-contratos` | ciudadano |
+| GET | `/api/contratos/:id` | admin, brigadista, ciudadano |
+| POST | `/api/contratos` | admin |
+| PUT | `/api/contratos/:id` | admin |
+
+### Tarifas (`/api/tarifas`)
+
+| Método | Endpoint | Roles |
+|--------|----------|-------|
+| GET | `/api/tarifas` | admin, brigadista |
+| POST | `/api/tarifas` | admin |
+| PUT | `/api/tarifas/:id` | admin |
+
+### Lecturas (`/api/lecturas`)
+
+| Método | Endpoint | Roles |
+|--------|----------|-------|
+| GET | `/api/lecturas` | admin |
+| GET | `/api/lecturas/ruta/:brigadistaId` | brigadista |
+| GET | `/api/lecturas/:id` | admin, brigadista |
+| POST | `/api/lecturas` | brigadista |
+
+### Facturación (`/api/facturas`)
+
+| Método | Endpoint | Roles |
+|--------|----------|-------|
+| GET | `/api/facturas` | admin |
+| GET | `/api/facturas/mis-facturas` | ciudadano |
+| GET | `/api/facturas/:id` | admin, ciudadano |
+| POST | `/api/facturas/generar` | admin |
+
+### Pagos (`/api/pagos`)
+
+| Método | Endpoint | Roles |
+|--------|----------|-------|
+| POST | `/api/pagos/qr/:facturaId` | ciudadano |
+| POST | `/api/pagos/confirmar` | ciudadano, admin |
+| GET | `/api/pagos` | admin |
+| GET | `/api/pagos/mis-pagos` | ciudadano |
+
+### Cortes (`/api/cortes`)
+
+| Método | Endpoint | Roles |
+|--------|----------|-------|
+| POST | `/api/cortes` | brigadista |
+| GET | `/api/cortes` | admin |
+| GET | `/api/cortes/:id` | admin |
+
+### Reportes (`/api/reportes`)
+
+| Método | Endpoint | Roles |
+|--------|----------|-------|
+| GET | `/api/reportes/resumen-diario` | admin |
+| GET | `/api/reportes/recaudacion-por-distrito` | admin |
+| GET | `/api/reportes/cortes-por-distrito` | admin |
+| GET | `/api/reportes/lecturas-por-brigadista` | admin |
+
+## Modelo de Datos
+
+```
+user ──1:N── contrato ──1:N── lectura
+  │           │                   │
+  │           │              factura ──1:N── pago
+  │           │
+  │           └── distrito
+  │
+  └──1:N── corte
+
+tarifa ──1:N── factura
+```
+
+Tablas principales: `user`, `session`, `account`, `verification`, `distrito`, `contrato`, `tarifa`, `lectura`, `factura`, `pago`, `corte`.
+
+## Formato de respuesta
+
+Todas las respuestas siguen el formato estándar:
+
+```json
+{
+  "success": true,
+  "data": { },
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 150
+  }
+}
+```
+
+## Verificación
 
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+# Lint → Build → Tests (en este orden)
+pnpm lint && pnpm build && pnpm test
 ```
 
-## Run tests
+## Licencia
 
-```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+UNLICENSED — Proyecto académico.
