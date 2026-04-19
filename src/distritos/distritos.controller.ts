@@ -32,37 +32,37 @@ export class DistritosController {
   constructor(private readonly distritosService: DistritosService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get all distritos' })
-  @ApiResponse({ status: 200, description: 'List of distritos' })
+  @ApiOperation({ summary: 'Obtener todos los distritos' })
+  @ApiResponse({ status: 200, description: 'Lista de distritos' })
   async findAll() {
     const data = await this.distritosService.findAll();
     return { success: true, data };
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a distrito by id' })
-  @ApiParam({ name: 'id', description: 'Distrito UUID' })
-  @ApiResponse({ status: 200, description: 'Distrito found' })
-  @ApiResponse({ status: 404, description: 'Distrito not found' })
+  @ApiOperation({ summary: 'Obtener un distrito por ID' })
+  @ApiParam({ name: 'id', description: 'UUID del distrito' })
+  @ApiResponse({ status: 200, description: 'Distrito encontrado' })
+  @ApiResponse({ status: 404, description: 'Distrito no encontrado' })
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     const data = await this.distritosService.findOne(id);
     return { success: true, data };
   }
 
   @Post()
-  @ApiOperation({ summary: 'Create a new distrito' })
-  @ApiResponse({ status: 201, description: 'Distrito created' })
-  @ApiResponse({ status: 400, description: 'Invalid input' })
+  @ApiOperation({ summary: 'Crear un nuevo distrito' })
+  @ApiResponse({ status: 201, description: 'Distrito creado' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos' })
   async create(@Body() dto: CreateDistritoDto) {
     const data = await this.distritosService.create(dto);
     return { success: true, data };
   }
 
   @Put(':id')
-  @ApiOperation({ summary: 'Update a distrito' })
-  @ApiParam({ name: 'id', description: 'Distrito UUID' })
-  @ApiResponse({ status: 200, description: 'Distrito updated' })
-  @ApiResponse({ status: 404, description: 'Distrito not found' })
+  @ApiOperation({ summary: 'Actualizar un distrito' })
+  @ApiParam({ name: 'id', description: 'UUID del distrito' })
+  @ApiResponse({ status: 200, description: 'Distrito actualizado' })
+  @ApiResponse({ status: 404, description: 'Distrito no encontrado' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateDistritoDto,
@@ -72,10 +72,10 @@ export class DistritosController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete a distrito' })
-  @ApiParam({ name: 'id', description: 'Distrito UUID' })
-  @ApiResponse({ status: 200, description: 'Distrito deleted' })
-  @ApiResponse({ status: 404, description: 'Distrito not found' })
+  @ApiOperation({ summary: 'Eliminar un distrito' })
+  @ApiParam({ name: 'id', description: 'UUID del distrito' })
+  @ApiResponse({ status: 200, description: 'Distrito eliminado' })
+  @ApiResponse({ status: 404, description: 'Distrito no encontrado' })
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     const data = await this.distritosService.remove(id);
     return { success: true, data };

@@ -1,15 +1,18 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateUsuarioDto {
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Nombre completo' })
   nombre?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Correo electrónico' })
   email?: string;
 
-  @ApiPropertyOptional({ enum: ['admin', 'brigadista', 'ciudadano'] })
+  @ApiPropertyOptional({
+    enum: ['admin', 'brigadista', 'ciudadano'],
+    description: 'Rol del usuario',
+  })
   role?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Estado' })
   estado?: boolean;
 }

@@ -16,41 +16,41 @@ import {
   GetSessionResponseDto,
 } from './dto';
 
-@ApiTags('Auth')
+@ApiTags('Autenticación')
 @Controller('auth')
 export class AuthController {
   @Post('sign-up/email')
-  @ApiOperation({ summary: 'Register with email and password' })
+  @ApiOperation({ summary: 'Registrarse con correo y contraseña' })
   @ApiBody({ type: SignUpDto })
   @ApiResponse({ status: 200, type: AuthTokenResponseDto })
-  @ApiResponse({ status: 400, description: 'Invalid input' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos' })
   signUp(@Req() req: Request, @Res() res: Response) {
     void toNodeHandler(auth)(req, res);
   }
 
   @Post('sign-in/email')
-  @ApiOperation({ summary: 'Sign in with email and password' })
+  @ApiOperation({ summary: 'Iniciar sesión con correo y contraseña' })
   @ApiBody({ type: SignInDto })
   @ApiResponse({ status: 200, type: AuthTokenResponseDto })
-  @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
   signIn(@Req() req: Request, @Res() res: Response) {
     void toNodeHandler(auth)(req, res);
   }
 
   @Post('sign-out')
-  @ApiOperation({ summary: 'Sign out (requires Origin header)' })
+  @ApiOperation({ summary: 'Cerrar sesión (requiere header Origin)' })
   @ApiResponse({ status: 200, description: '{ success: true }' })
-  @ApiResponse({ status: 403, description: 'Missing Origin header' })
+  @ApiResponse({ status: 403, description: 'Falta header Origin' })
   signOut(@Req() req: Request, @Res() res: Response) {
     void toNodeHandler(auth)(req, res);
   }
 
   @Get('get-session')
-  @ApiOperation({ summary: 'Get current session' })
+  @ApiOperation({ summary: 'Obtener sesión actual' })
   @ApiResponse({
     status: 200,
     type: GetSessionResponseDto,
-    description: 'Session object or null',
+    description: 'Objeto de sesión o null',
   })
   getSession(@Req() req: Request, @Res() res: Response) {
     void toNodeHandler(auth)(req, res);

@@ -17,7 +17,7 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('Elapas API')
-    .setDescription('Elapas API documentation')
+    .setDescription('Documentación de la API Elapas')
     .setVersion('0.0.1')
     .addBearerAuth()
     .build();

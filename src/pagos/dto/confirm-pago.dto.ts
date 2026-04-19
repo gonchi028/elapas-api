@@ -8,22 +8,26 @@ export enum MetodoPago {
 }
 
 export class ConfirmPagoDto {
-  @ApiProperty()
+  @ApiProperty({ description: 'ID de la factura' })
   @IsString()
   @IsNotEmpty()
   facturaId: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Monto del pago (Bs)' })
   @IsString()
   @IsNotEmpty()
   monto: string;
 
-  @ApiProperty({ enum: MetodoPago, required: false })
+  @ApiProperty({
+    enum: MetodoPago,
+    required: false,
+    description: 'Método de pago',
+  })
   @IsEnum(MetodoPago)
   @IsOptional()
   metodoPago?: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, description: 'Número de referencia' })
   @IsString()
   @IsOptional()
   referencia?: string;

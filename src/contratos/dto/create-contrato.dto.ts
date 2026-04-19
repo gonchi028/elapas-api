@@ -1,27 +1,30 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateContratoDto {
-  @ApiProperty()
+  @ApiProperty({ description: 'Número de contrato' })
   nroContrato: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'ID del usuario' })
   usuarioId: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'ID del distrito' })
   distritoId: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Dirección del inmueble' })
   direccion: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Número de medidor' })
   nroMedidor: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Latitud GPS' })
   latitud?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Longitud GPS' })
   longitud?: string;
 
-  @ApiPropertyOptional({ enum: ['activo', 'suspendido', 'cortado'] })
+  @ApiPropertyOptional({
+    enum: ['activo', 'suspendido', 'cortado'],
+    description: 'Estado',
+  })
   estado?: string;
 }

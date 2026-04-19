@@ -1,18 +1,18 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateLecturaDto {
-  @ApiProperty()
+  @ApiProperty({ description: 'ID del contrato' })
   contratoId: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Valor de lectura del medidor (m³)' })
   valorLectura: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'URL de la fotografía' })
   fotoUrl?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Latitud GPS' })
   latitud?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Longitud GPS' })
   longitud?: string;
 }

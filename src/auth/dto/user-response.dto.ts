@@ -1,24 +1,24 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UserResponseDto {
-  @ApiProperty()
+  @ApiProperty({ description: 'Identificador único' })
   id: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Nombre completo' })
   name: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Correo electrónico' })
   email: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Correo verificado' })
   emailVerified: boolean;
 
-  @ApiProperty({ nullable: true })
+  @ApiProperty({ nullable: true, description: 'Imagen de perfil' })
   image: string | null;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Fecha de creación' })
   createdAt: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Fecha de actualización' })
   updatedAt: string;
 }
