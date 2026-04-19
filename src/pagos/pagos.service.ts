@@ -1,36 +1,35 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { db } from '../db/connection';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { DB_PROVIDER, type Database } from '../db/connection';
 import { pago, factura, contrato } from '../db/schema';
 import { eq, desc, count } from 'drizzle-orm';
 
 @Injectable()
 export class PagosService {
-  async findAll(page = 1, limit = 10) {
+  constructor(@Inject(DB_PROVIDER) private readonly db: Database) {}
+
+  async findAll(page = 1, limit = 20) {
     const offset = (page - 1) * limit;
 
     const [data, totalResult] = await Promise.all([
-      db
+      this.db
         .select()
         .from(pago)
         .limit(limit)
         .offset(offset)
         .orderBy(desc(pago.createdAt)),
-      db.select({ total: count() }).from(pago),
+      this.db.select({ total: count() }).from(pago),
     ]);
 
-    return {
-      success: true,
-      data,
-      pagination: {
-        page,
-        limit,
-        total: totalResult[0].total,
-      },
-    };
+    return { data, total: totalResult[0].total };
   }
 
   async findByUsuario(usuarioId: string) {
-    const data = await db
+    const rows = await this.db
       .select()
       .from(pago)
       .innerJoin(factura, eq(pago.facturaId, factura.id))
@@ -38,20 +37,23 @@ export class PagosService {
       .where(eq(contrato.usuarioId, usuarioId))
       .orderBy(desc(pago.createdAt));
 
-    return { success: true, data: data.map((r) => r.pago) };
+    return rows.map((r) => r.pago);
   }
 
   async generateQr(facturaId: string) {
-    const facturaResult = await db
+    const [f] = await this.db
       .select()
       .from(factura)
       .where(eq(factura.id, facturaId));
 
-    if (facturaResult.length === 0) {
+    if (!f) {
       throw new NotFoundException(`Factura ${facturaId} no encontrada`);
     }
 
-    const f = facturaResult[0];
+    if (f.estado !== 'pendiente') {
+      throw new BadRequestException('La factura ya está pagada');
+    }
+
     const qrData = JSON.stringify({
       facturaId: f.id,
       monto: f.total,
@@ -59,14 +61,14 @@ export class PagosService {
       fecha: new Date().toISOString(),
     });
 
-    await db.insert(pago).values({
+    await this.db.insert(pago).values({
       facturaId: f.id,
       monto: f.total,
-      metodoPago: 'qr_simple',
+      metodoPago: 'qr_simple' as const,
       qrData,
     });
 
-    return { success: true, data: { qrData } };
+    return { qrData };
   }
 
   async confirm(dto: {
@@ -75,34 +77,39 @@ export class PagosService {
     metodoPago?: string;
     referencia?: string;
   }) {
-    const facturaResult = await db
+    const [f] = await this.db
       .select()
       .from(factura)
       .where(eq(factura.id, dto.facturaId));
 
-    if (facturaResult.length === 0) {
+    if (!f) {
       throw new NotFoundException(`Factura ${dto.facturaId} no encontrada`);
     }
 
-    const result = await db
-      .insert(pago)
-      .values({
-        facturaId: dto.facturaId,
-        monto: dto.monto,
-        metodoPago: (dto.metodoPago ?? 'efectivo') as
-          | 'qr_simple'
-          | 'efectivo'
-          | 'transferencia',
-        referencia: dto.referencia,
-        fechaPago: new Date(),
-      })
-      .returning();
+    const pagoCreado = await this.db.transaction(async (tx) => {
+      const [p] = await tx
+        .insert(pago)
+        .values({
+          facturaId: dto.facturaId,
+          monto: dto.monto,
+          metodoPago: (dto.metodoPago ?? 'efectivo') as
+            | 'qr_simple'
+            | 'efectivo'
+            | 'transferencia',
+          referencia: dto.referencia,
+        })
+        .returning();
 
-    await db
-      .update(factura)
-      .set({ estado: 'pagada' })
-      .where(eq(factura.id, dto.facturaId));
+      await tx
+        .update(factura)
+        .set({
+          estado: 'pagada' as 'pendiente' | 'pagada' | 'vencida',
+        })
+        .where(eq(factura.id, dto.facturaId));
 
-    return { success: true, data: result[0] };
+      return p;
+    });
+
+    return pagoCreado;
   }
 }

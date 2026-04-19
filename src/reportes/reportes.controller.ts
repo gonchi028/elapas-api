@@ -14,27 +14,34 @@ export class ReportesController {
   constructor(private readonly reportesService: ReportesService) {}
 
   @Get('resumen-diario')
-  resumenDiario() {
-    return this.reportesService.resumenDiario();
+  async resumenDiario() {
+    const data = await this.reportesService.resumenDiario();
+    return { success: true, data };
   }
 
   @Get('recaudacion-por-distrito')
-  recaudacionPorDistrito() {
-    return this.reportesService.recaudacionPorDistrito();
+  async recaudacionPorDistrito() {
+    const data = await this.reportesService.recaudacionPorDistrito();
+    return { success: true, data };
   }
 
   @Get('cortes-por-distrito')
-  cortesPorDistrito() {
-    return this.reportesService.cortesPorDistrito();
+  async cortesPorDistrito() {
+    const data = await this.reportesService.cortesPorDistrito();
+    return { success: true, data };
   }
 
   @Get('lecturas-por-brigadista')
   @ApiQuery({ name: 'fechaInicio', required: false })
   @ApiQuery({ name: 'fechaFin', required: false })
-  lecturasPorBrigadista(
+  async lecturasPorBrigadista(
     @Query('fechaInicio') fechaInicio?: string,
     @Query('fechaFin') fechaFin?: string,
   ) {
-    return this.reportesService.lecturasPorBrigadista(fechaInicio, fechaFin);
+    const data = await this.reportesService.lecturasPorBrigadista(
+      fechaInicio,
+      fechaFin,
+    );
+    return { success: true, data };
   }
 }

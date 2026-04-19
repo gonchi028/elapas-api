@@ -1,29 +1,36 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { db } from '../db/connection';
-import { tarifa } from '../db/schema';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { CreateTarifaDto } from './dto/create-tarifa.dto';
+import { DB_PROVIDER, type Database } from '../db/connection';
+import { tarifa } from '../db/schema';
 
 @Injectable()
 export class TarifasService {
-  async findAll() {
-    const data = await db.select().from(tarifa).where(eq(tarifa.estado, true));
+  constructor(@Inject(DB_PROVIDER) private db: Database) {}
 
-    return data;
+  async findAll() {
+    return this.db.select().from(tarifa).where(eq(tarifa.estado, true));
   }
 
   async findOne(id: string) {
-    const [result] = await db.select().from(tarifa).where(eq(tarifa.id, id));
-
+    const [result] = await this.db
+      .select()
+      .from(tarifa)
+      .where(eq(tarifa.id, id));
     if (!result) {
       throw new NotFoundException(`Tarifa con id ${id} no encontrada`);
     }
-
     return result;
   }
 
-  async create(dto: CreateTarifaDto) {
-    const [result] = await db
+  async create(dto: {
+    nombre: string;
+    tramoMin: number;
+    tramoMax: number;
+    precioM3: string;
+    cargoFijo: string;
+    estado?: boolean;
+  }) {
+    const [result] = await this.db
       .insert(tarifa)
       .values({
         nombre: dto.nombre,
@@ -34,14 +41,36 @@ export class TarifasService {
         estado: dto.estado,
       })
       .returning();
-
     return result;
   }
 
-  async update(id: string, dto: CreateTarifaDto) {
-    await this.findOne(id);
+  async update(
+    id: string,
+    dto: {
+      nombre?: string;
+      tramoMin?: number;
+      tramoMax?: number;
+      precioM3?: string;
+      cargoFijo?: string;
+      estado?: boolean;
+    },
+  ) {
+    const [found] = await this.db
+      .select()
+      .from(tarifa)
+      .where(eq(tarifa.id, id));
+    if (!found) {
+      throw new NotFoundException(`Tarifa con id ${id} no encontrada`);
+    }
 
-    const values: Record<string, any> = {};
+    const values: Partial<{
+      nombre: string;
+      tramoMin: number;
+      tramoMax: number;
+      precioM3: string;
+      cargoFijo: string;
+      estado: boolean;
+    }> = {};
 
     if (dto.nombre !== undefined) values.nombre = dto.nombre;
     if (dto.tramoMin !== undefined) values.tramoMin = dto.tramoMin;
@@ -50,12 +79,11 @@ export class TarifasService {
     if (dto.cargoFijo !== undefined) values.cargoFijo = dto.cargoFijo;
     if (dto.estado !== undefined) values.estado = dto.estado;
 
-    const [result] = await db
+    const [result] = await this.db
       .update(tarifa)
       .set(values)
       .where(eq(tarifa.id, id))
       .returning();
-
     return result;
   }
 }

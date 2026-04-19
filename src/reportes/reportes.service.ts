@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { db } from '../db/connection';
+import { Inject, Injectable } from '@nestjs/common';
+import { DB_PROVIDER, type Database } from '../db/connection';
 import {
   pago,
   factura,
@@ -9,58 +9,48 @@ import {
   distrito,
   user,
 } from '../db/schema';
-import { SQL, eq, and, sql, gte, lte } from 'drizzle-orm';
+import { SQL, eq, and, sql, gte, lte, count } from 'drizzle-orm';
 
 @Injectable()
 export class ReportesService {
-  async resumenDiario() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+  constructor(@Inject(DB_PROVIDER) private readonly db: Database) {}
 
+  async resumenDiario() {
     const [lecturasResult, cortesResult, pagosResult, contratosResult] =
       await Promise.all([
-        db
-          .select({ count: sql<number>`count(*)` })
+        this.db
+          .select({ count: count() })
           .from(lectura)
-          .where(
-            and(
-              gte(lectura.fechaLectura, today),
-              lte(lectura.fechaLectura, tomorrow),
-            ),
-          ),
-        db
-          .select({ count: sql<number>`count(*)` })
+          .where(sql`DATE(${lectura.fechaLectura}) = CURRENT_DATE`),
+        this.db
+          .select({ count: count() })
           .from(corte)
-          .where(
-            and(gte(corte.createdAt, today), lte(corte.createdAt, tomorrow)),
-          ),
-        db
+          .where(sql`DATE(${corte.createdAt}) = CURRENT_DATE`),
+        this.db
           .select({ total: sql<string>`coalesce(sum(${pago.monto}), 0)` })
           .from(pago)
-          .where(
-            and(gte(pago.fechaPago, today), lte(pago.fechaPago, tomorrow)),
-          ),
-        db
-          .select({ count: sql<number>`count(*)` })
+          .where(sql`DATE(${pago.fechaPago}) = CURRENT_DATE`),
+        this.db
+          .select({ count: count() })
           .from(contrato)
-          .where(eq(contrato.estado, 'activo' as any)),
+          .where(
+            eq(
+              contrato.estado,
+              'activo' as 'activo' | 'suspendido' | 'cortado',
+            ),
+          ),
       ]);
 
     return {
-      success: true,
-      data: {
-        lecturasHoy: Number(lecturasResult[0].count),
-        cortesHoy: Number(cortesResult[0].count),
-        recaudacionHoy: parseFloat(pagosResult[0].total),
-        contratosActivos: Number(contratosResult[0].count),
-      },
+      lecturasHoy: Number(lecturasResult[0].count),
+      cortesHoy: Number(cortesResult[0].count),
+      recaudacionHoy: parseFloat(pagosResult[0].total),
+      contratosActivos: Number(contratosResult[0].count),
     };
   }
 
   async recaudacionPorDistrito() {
-    const data = await db
+    const rows = await this.db
       .select({
         distrito: distrito.nombre,
         total: sql<string>`coalesce(sum(${pago.monto}), 0)`,
@@ -71,59 +61,52 @@ export class ReportesService {
       .innerJoin(distrito, eq(contrato.distritoId, distrito.id))
       .groupBy(distrito.nombre);
 
-    return {
-      success: true,
-      data: data.map((r) => ({
-        distrito: r.distrito,
-        total: parseFloat(r.total),
-      })),
-    };
+    return rows.map((r) => ({
+      distrito: r.distrito,
+      total: parseFloat(r.total),
+    }));
   }
 
   async cortesPorDistrito() {
-    const data = await db
+    const rows = await this.db
       .select({
         distrito: distrito.nombre,
-        cantidad: sql<number>`count(*)`,
+        cantidad: count(),
       })
       .from(corte)
       .innerJoin(contrato, eq(corte.contratoId, contrato.id))
       .innerJoin(distrito, eq(contrato.distritoId, distrito.id))
       .groupBy(distrito.nombre);
 
-    return {
-      success: true,
-      data: data.map((r) => ({
-        distrito: r.distrito,
-        cantidad: Number(r.cantidad),
-      })),
-    };
+    return rows.map((r) => ({
+      distrito: r.distrito,
+      cantidad: Number(r.cantidad),
+    }));
   }
 
   async lecturasPorBrigadista(fechaInicio?: string, fechaFin?: string) {
-    const conditions: SQL[] = [];
+    const conditions: (SQL | undefined)[] = [];
     if (fechaInicio)
       conditions.push(gte(lectura.fechaLectura, new Date(fechaInicio)));
     if (fechaFin)
       conditions.push(lte(lectura.fechaLectura, new Date(fechaFin)));
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const where = conditions.filter(Boolean).length
+      ? and(...conditions.filter(Boolean))
+      : undefined;
 
-    const data = await db
+    const rows = await this.db
       .select({
         brigadista: sql<string>`coalesce(${user.name}, 'Sin asignar')`,
-        cantidad: sql<number>`count(*)`,
+        cantidad: count(),
       })
       .from(lectura)
       .innerJoin(user, eq(lectura.brigadistaId, user.id))
-      .where(whereClause)
+      .where(where)
       .groupBy(user.name);
 
-    return {
-      success: true,
-      data: data.map((r) => ({
-        brigadista: r.brigadista,
-        cantidad: Number(r.cantidad),
-      })),
-    };
+    return rows.map((r) => ({
+      brigadista: r.brigadista,
+      cantidad: Number(r.cantidad),
+    }));
   }
 }

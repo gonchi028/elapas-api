@@ -44,14 +44,16 @@ export class LecturasController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    const result = await this.lecturasService.findAll(
+    const p = page ? Number(page) : 1;
+    const l = limit ? Number(limit) : 20;
+    const { data, total } = await this.lecturasService.findAll({
       fechaInicio,
       fechaFin,
       brigadistaId,
-      page ? parseInt(page, 10) : 1,
-      limit ? parseInt(limit, 10) : 20,
-    );
-    return { success: true, data: result.data, pagination: result.pagination };
+      page: p,
+      limit: l,
+    });
+    return { success: true, data, pagination: { page: p, limit: l, total } };
   }
 
   @Get('ruta/:brigadistaId')

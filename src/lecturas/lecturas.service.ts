@@ -1,59 +1,57 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { db } from '../db/connection';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { DB_PROVIDER, type Database } from '../db/connection';
 import { lectura } from '../db/schema';
 import { SQL, eq, and, sql, desc, gte, lte } from 'drizzle-orm';
 import { CreateLecturaDto } from './dto/create-lectura.dto';
 
 @Injectable()
 export class LecturasService {
-  async findAll(
-    fechaInicio?: string,
-    fechaFin?: string,
-    brigadistaId?: string,
-    page = 1,
-    limit = 20,
-  ) {
-    const conditions: SQL[] = [];
+  constructor(@Inject(DB_PROVIDER) private db: Database) {}
 
-    if (fechaInicio) {
-      conditions.push(gte(lectura.fechaLectura, new Date(fechaInicio)));
-    }
-
-    if (fechaFin) {
-      conditions.push(lte(lectura.fechaLectura, new Date(fechaFin)));
-    }
-
-    if (brigadistaId) {
-      conditions.push(eq(lectura.brigadistaId, brigadistaId));
-    }
-
+  async findAll(filters: {
+    fechaInicio?: string;
+    fechaFin?: string;
+    brigadistaId?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const page = filters.page ?? 1;
+    const limit = filters.limit ?? 20;
     const offset = (page - 1) * limit;
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const conditions: (SQL | undefined)[] = [];
+    if (filters.fechaInicio)
+      conditions.push(gte(lectura.fechaLectura, new Date(filters.fechaInicio)));
+    if (filters.fechaFin)
+      conditions.push(lte(lectura.fechaLectura, new Date(filters.fechaFin)));
+    if (filters.brigadistaId)
+      conditions.push(eq(lectura.brigadistaId, filters.brigadistaId));
+    const where = conditions.filter(Boolean).length
+      ? and(...conditions.filter(Boolean))
+      : undefined;
 
-    const [countResult] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(lectura)
-      .where(whereClause);
+    const [countResult, data] = await Promise.all([
+      this.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(lectura)
+        .where(where),
+      this.db
+        .select()
+        .from(lectura)
+        .where(where)
+        .orderBy(desc(lectura.createdAt))
+        .limit(limit)
+        .offset(offset),
+    ]);
 
-    const total = countResult.count;
-
-    const data = await db
-      .select()
-      .from(lectura)
-      .where(whereClause)
-      .orderBy(desc(lectura.createdAt))
-      .limit(limit)
-      .offset(offset);
-
-    return {
-      data,
-      pagination: { page, limit, total },
-    };
+    return { data, total: countResult[0].count };
   }
 
   async findOne(id: string) {
-    const [result] = await db.select().from(lectura).where(eq(lectura.id, id));
+    const [result] = await this.db
+      .select()
+      .from(lectura)
+      .where(eq(lectura.id, id));
 
     if (!result) {
       throw new NotFoundException(`Lectura con id ${id} no encontrada`);
@@ -63,17 +61,15 @@ export class LecturasService {
   }
 
   async findByBrigadista(brigadistaId: string) {
-    const data = await db
+    return this.db
       .select()
       .from(lectura)
       .where(eq(lectura.brigadistaId, brigadistaId))
       .orderBy(desc(lectura.createdAt));
-
-    return data;
   }
 
   async create(brigadistaId: string, dto: CreateLecturaDto) {
-    const [result] = await db
+    const [result] = await this.db
       .insert(lectura)
       .values({
         contratoId: dto.contratoId,

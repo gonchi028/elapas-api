@@ -54,14 +54,16 @@ export class CortesController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    const result = await this.cortesService.findAll(
+    const p = page ? Number(page) : 1;
+    const l = limit ? Number(limit) : 20;
+    const { data, total } = await this.cortesService.findAll({
       distritoId,
       fechaInicio,
       fechaFin,
-      page ? parseInt(page, 10) : 1,
-      limit ? parseInt(limit, 10) : 20,
-    );
-    return { success: true, data: result.data, pagination: result.pagination };
+      page: p,
+      limit: l,
+    });
+    return { success: true, data, pagination: { page: p, limit: l, total } };
   }
 
   @Get(':id')

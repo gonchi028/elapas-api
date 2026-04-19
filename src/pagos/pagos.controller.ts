@@ -24,31 +24,34 @@ export class PagosController {
 
   @Post('qr/:facturaId')
   @Roles('ciudadano')
-  generateQr(@Param('facturaId') facturaId: string) {
-    return this.pagosService.generateQr(facturaId);
+  async generateQr(@Param('facturaId') facturaId: string) {
+    const data = await this.pagosService.generateQr(facturaId);
+    return { success: true, data };
   }
 
   @Post('confirmar')
   @Roles('ciudadano', 'admin')
-  confirm(@Body() dto: ConfirmPagoDto) {
-    return this.pagosService.confirm(dto);
+  async confirm(@Body() dto: ConfirmPagoDto) {
+    const data = await this.pagosService.confirm(dto);
+    return { success: true, data };
   }
 
   @Get()
   @Roles('admin')
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
-  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
-    return this.pagosService.findAll(
-      page ? parseInt(page, 10) : 1,
-      limit ? parseInt(limit, 10) : 10,
-    );
+  async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+    const p = page ? Number(page) : 1;
+    const l = limit ? Number(limit) : 10;
+    const { data, total } = await this.pagosService.findAll(p, l);
+    return { success: true, data, pagination: { page: p, limit: l, total } };
   }
 
   @Get('mis-pagos')
   @Roles('ciudadano')
-  findMisPagos(@Req() req: any) {
+  async findMisPagos(@Req() req: any) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
-    return this.pagosService.findByUsuario(req.user.id);
+    const data = await this.pagosService.findByUsuario(req.user.id);
+    return { success: true, data };
   }
 }

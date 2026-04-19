@@ -44,13 +44,15 @@ export class ContratosController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    const result = await this.contratosService.findAll(
+    const p = page ? Number(page) : 1;
+    const l = limit ? Number(limit) : 20;
+    const { data, total } = await this.contratosService.findAll({
       distritoId,
       estado,
-      page ? parseInt(page, 10) : 1,
-      limit ? parseInt(limit, 10) : 20,
-    );
-    return { success: true, data: result.data, pagination: result.pagination };
+      page: p,
+      limit: l,
+    });
+    return { success: true, data, pagination: { page: p, limit: l, total } };
   }
 
   @Get('mis-contratos')

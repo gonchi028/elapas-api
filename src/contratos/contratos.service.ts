@@ -1,50 +1,57 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { db } from '../db/connection';
-import { contrato } from '../db/schema';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { DB_PROVIDER, type Database } from '../db/connection';
+import { contrato, type contratoEstadoEnum } from '../db/schema';
 import { SQL, eq, and, sql, desc } from 'drizzle-orm';
 import { CreateContratoDto } from './dto/create-contrato.dto';
 import { UpdateContratoDto } from './dto/update-contrato.dto';
 
 @Injectable()
 export class ContratosService {
-  async findAll(distritoId?: string, estado?: string, page = 1, limit = 20) {
-    const conditions: SQL[] = [];
+  constructor(@Inject(DB_PROVIDER) private db: Database) {}
 
-    if (distritoId) {
-      conditions.push(eq(contrato.distritoId, distritoId));
-    }
-
-    if (estado) {
-      conditions.push(eq(contrato.estado, estado as any));
-    }
-
+  async findAll(filters: {
+    distritoId?: string;
+    estado?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const page = filters.page ?? 1;
+    const limit = filters.limit ?? 20;
     const offset = (page - 1) * limit;
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const conditions: (SQL | undefined)[] = [];
+    if (filters.distritoId)
+      conditions.push(eq(contrato.distritoId, filters.distritoId));
+    if (filters.estado)
+      conditions.push(
+        eq(
+          contrato.estado,
+          filters.estado as (typeof contratoEstadoEnum.enumValues)[number],
+        ),
+      );
+    const where = conditions.filter(Boolean).length
+      ? and(...conditions.filter(Boolean))
+      : undefined;
 
-    const [countResult] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(contrato)
-      .where(whereClause);
+    const [countResult, data] = await Promise.all([
+      this.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(contrato)
+        .where(where),
+      this.db
+        .select()
+        .from(contrato)
+        .where(where)
+        .orderBy(desc(contrato.createdAt))
+        .limit(limit)
+        .offset(offset),
+    ]);
 
-    const total = countResult.count;
-
-    const data = await db
-      .select()
-      .from(contrato)
-      .where(whereClause)
-      .orderBy(desc(contrato.createdAt))
-      .limit(limit)
-      .offset(offset);
-
-    return {
-      data,
-      pagination: { page, limit, total },
-    };
+    return { data, total: countResult[0].count };
   }
 
   async findOne(id: string) {
-    const [result] = await db
+    const [result] = await this.db
       .select()
       .from(contrato)
       .where(eq(contrato.id, id));
@@ -57,17 +64,15 @@ export class ContratosService {
   }
 
   async findByUsuario(usuarioId: string) {
-    const data = await db
+    return this.db
       .select()
       .from(contrato)
       .where(eq(contrato.usuarioId, usuarioId))
       .orderBy(desc(contrato.createdAt));
-
-    return data;
   }
 
   async create(dto: CreateContratoDto) {
-    const [result] = await db
+    const [result] = await this.db
       .insert(contrato)
       .values({
         nroContrato: dto.nroContrato,
@@ -86,7 +91,7 @@ export class ContratosService {
   async update(id: string, dto: UpdateContratoDto) {
     await this.findOne(id);
 
-    const values: Record<string, any> = {};
+    const values: Partial<typeof contrato.$inferInsert> = {};
 
     if (dto.nroContrato !== undefined) values.nroContrato = dto.nroContrato;
     if (dto.usuarioId !== undefined) values.usuarioId = dto.usuarioId;
@@ -95,9 +100,11 @@ export class ContratosService {
     if (dto.nroMedidor !== undefined) values.nroMedidor = dto.nroMedidor;
     if (dto.latitud !== undefined) values.latitud = dto.latitud;
     if (dto.longitud !== undefined) values.longitud = dto.longitud;
-    if (dto.estado !== undefined) values.estado = dto.estado;
+    if (dto.estado !== undefined)
+      values.estado =
+        dto.estado as (typeof contratoEstadoEnum.enumValues)[number];
 
-    const [result] = await db
+    const [result] = await this.db
       .update(contrato)
       .set(values)
       .where(eq(contrato.id, id))

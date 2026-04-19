@@ -1,67 +1,95 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { db } from '../db/connection';
-import { factura, contrato, lectura, tarifa } from '../db/schema';
-import { SQL, eq, and, desc, count } from 'drizzle-orm';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { DB_PROVIDER, type Database } from '../db/connection';
+import {
+  factura,
+  contrato,
+  lectura,
+  tarifa,
+  type contratoEstadoEnum,
+  type facturaEstadoEnum,
+} from '../db/schema';
+import { eq, and, desc, count, SQL } from 'drizzle-orm';
 
 @Injectable()
 export class FacturasService {
-  async findAll(estado?: string, periodo?: string, page = 1, limit = 10) {
-    const offset = (page - 1) * limit;
-    const conditions: SQL[] = [];
-    if (estado) conditions.push(eq(factura.estado, estado as any));
-    if (periodo) conditions.push(eq(factura.periodo, periodo));
+  constructor(@Inject(DB_PROVIDER) private db: Database) {}
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  async findAll(filters: {
+    estado?: string;
+    periodo?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const page = filters.page ?? 1;
+    const limit = filters.limit ?? 20;
+    const offset = (page - 1) * limit;
+
+    const conditions: (SQL | undefined)[] = [];
+    if (filters.estado)
+      conditions.push(
+        eq(
+          factura.estado,
+          filters.estado as (typeof facturaEstadoEnum.enumValues)[number],
+        ),
+      );
+    if (filters.periodo) conditions.push(eq(factura.periodo, filters.periodo));
+    const where = conditions.filter(Boolean).length
+      ? and(...conditions.filter(Boolean))
+      : undefined;
 
     const [data, totalResult] = await Promise.all([
-      db
+      this.db
         .select()
         .from(factura)
-        .where(whereClause)
+        .where(where)
+        .orderBy(desc(factura.createdAt))
         .limit(limit)
-        .offset(offset)
-        .orderBy(desc(factura.createdAt)),
-      db.select({ total: count() }).from(factura).where(whereClause),
+        .offset(offset),
+      this.db.select({ total: count() }).from(factura).where(where),
     ]);
 
-    return {
-      success: true,
-      data,
-      pagination: {
-        page,
-        limit,
-        total: totalResult[0].total,
-      },
-    };
+    return { data, total: totalResult[0].total };
   }
 
   async findOne(id: string) {
-    const result = await db.select().from(factura).where(eq(factura.id, id));
-    if (result.length === 0) {
+    const [result] = await this.db
+      .select()
+      .from(factura)
+      .where(eq(factura.id, id));
+
+    if (!result) {
       throw new NotFoundException(`Factura ${id} no encontrada`);
     }
-    return { success: true, data: result[0] };
+
+    return result;
   }
 
   async findByUsuario(usuarioId: string) {
-    const data = await db
+    const rows = await this.db
       .select()
       .from(factura)
       .innerJoin(contrato, eq(factura.contratoId, contrato.id))
       .where(eq(contrato.usuarioId, usuarioId))
       .orderBy(desc(factura.createdAt));
 
-    return { success: true, data: data.map((r) => r.factura) };
+    return rows.map((r) => r.factura);
   }
 
   async generate(periodo: string, fechaVencimiento: string) {
     let generated = 0;
 
-    await db.transaction(async (tx) => {
+    await this.db.transaction(async (tx) => {
       const contratos = await tx
         .select()
         .from(contrato)
-        .where(eq(contrato.estado, 'activo' as any));
+        .where(
+          eq(
+            contrato.estado,
+            'activo' as (typeof contratoEstadoEnum.enumValues)[number],
+          ),
+        );
+
+      const tarifas = await tx.select().from(tarifa);
 
       for (const c of contratos) {
         const lecturas = await tx
@@ -78,8 +106,6 @@ export class FacturasService {
         const consumoM3 = latest.valorLectura - previous.valorLectura;
 
         if (consumoM3 < 0) continue;
-
-        const tarifas = await tx.select().from(tarifa);
 
         const tarifaAplicable = tarifas.find(
           (t) =>
@@ -103,17 +129,14 @@ export class FacturasService {
           cargoFijo: cargoFijo.toString(),
           subtotal: subtotal.toString(),
           total: total.toString(),
-          estado: 'pendiente',
-          fechaVencimiento: fechaVencimiento,
+          estado: 'pendiente' as (typeof facturaEstadoEnum.enumValues)[number],
+          fechaVencimiento,
         });
 
         generated++;
       }
     });
 
-    return {
-      success: true,
-      data: { generated, message: `Se generaron ${generated} facturas` },
-    };
+    return generated;
   }
 }

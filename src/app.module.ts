@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { DbModule } from './db/db.module';
 import { AuthModule } from './auth/auth.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { DistritosModule } from './distritos/distritos.module';
@@ -14,6 +15,7 @@ import { ReportesModule } from './reportes/reportes.module';
 
 @Module({
   imports: [
+    DbModule,
     AuthModule,
     UsuariosModule,
     DistritosModule,

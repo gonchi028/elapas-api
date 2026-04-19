@@ -43,15 +43,13 @@ export class UsuariosController {
   @ApiResponse({ status: 200, description: 'Lista paginada de usuarios' })
   async findAll(
     @Query('role') role?: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    const result = await this.usuariosService.findAll(
-      role,
-      page ? Number(page) : undefined,
-      limit ? Number(limit) : undefined,
-    );
-    return { success: true, ...result };
+    const p = page ? Number(page) : 1;
+    const l = limit ? Number(limit) : 20;
+    const { data, total } = await this.usuariosService.findAll(role, p, l);
+    return { success: true, data, pagination: { page: p, limit: l, total } };
   }
 
   @Get(':id')
