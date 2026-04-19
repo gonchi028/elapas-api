@@ -11,6 +11,10 @@ async function bootstrap() {
 
   app.use(json({ limit: '10kb' }));
 
+  app.setGlobalPrefix('api', {
+    exclude: ['/'],
+  });
+
   const config = new DocumentBuilder()
     .setTitle('Elapas API')
     .setDescription('Elapas API documentation')

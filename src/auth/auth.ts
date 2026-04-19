@@ -10,4 +10,20 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: 8,
   },
+  user: {
+    additionalFields: {
+      role: {
+        type: 'string',
+        required: false,
+        defaultValue: 'ciudadano',
+        input: false,
+      },
+      estado: {
+        type: 'boolean',
+        required: false,
+        defaultValue: true,
+        input: false,
+      },
+    },
+  },
 });

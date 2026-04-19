@@ -17,7 +17,7 @@ import {
 } from './dto';
 
 @ApiTags('Auth')
-@Controller('api/auth')
+@Controller('auth')
 export class AuthController {
   @Post('sign-up/email')
   @ApiOperation({ summary: 'Register with email and password' })

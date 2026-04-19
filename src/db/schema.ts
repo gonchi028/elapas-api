@@ -1,12 +1,51 @@
 import { relations } from 'drizzle-orm';
-import { pgTable, text, timestamp, boolean, index } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  pgEnum,
+  text,
+  timestamp,
+  boolean,
+  integer,
+  decimal,
+  date,
+  index,
+} from 'drizzle-orm/pg-core';
+
+export const roleEnum = pgEnum('role', ['admin', 'brigadista', 'ciudadano']);
+
+export const contratoEstadoEnum = pgEnum('contrato_estado', [
+  'activo',
+  'suspendido',
+  'cortado',
+]);
+
+export const facturaEstadoEnum = pgEnum('factura_estado', [
+  'pendiente',
+  'pagada',
+  'vencida',
+]);
+
+export const pagoMetodoEnum = pgEnum('pago_metodo', [
+  'qr_simple',
+  'efectivo',
+  'transferencia',
+]);
+
+export const corteEstadoEnum = pgEnum('corte_estado', [
+  'efectuado',
+  'reconectado',
+]);
 
 export const user = pgTable('user', {
-  id: text('id').primaryKey(),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').default(false).notNull(),
   image: text('image'),
+  role: roleEnum('role').default('ciudadano').notNull(),
+  estado: boolean('estado').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
@@ -17,7 +56,9 @@ export const user = pgTable('user', {
 export const session = pgTable(
   'session',
   {
-    id: text('id').primaryKey(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     expiresAt: timestamp('expires_at').notNull(),
     token: text('token').notNull().unique(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -36,7 +77,9 @@ export const session = pgTable(
 export const account = pgTable(
   'account',
   {
-    id: text('id').primaryKey(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     accountId: text('account_id').notNull(),
     providerId: text('provider_id').notNull(),
     userId: text('user_id')
@@ -60,7 +103,9 @@ export const account = pgTable(
 export const verification = pgTable(
   'verification',
   {
-    id: text('id').primaryKey(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     identifier: text('identifier').notNull(),
     value: text('value').notNull(),
     expiresAt: timestamp('expires_at').notNull(),
@@ -73,9 +118,132 @@ export const verification = pgTable(
   (table) => [index('verification_identifier_idx').on(table.identifier)],
 );
 
+export const distrito = pgTable('distrito', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  nombre: text('nombre').notNull(),
+  codigo: text('codigo').notNull().unique(),
+});
+
+export const contrato = pgTable('contrato', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  nroContrato: text('nro_contrato').notNull().unique(),
+  usuarioId: text('usuario_id')
+    .notNull()
+    .references(() => user.id),
+  distritoId: text('distrito_id')
+    .notNull()
+    .references(() => distrito.id),
+  direccion: text('direccion').notNull(),
+  nroMedidor: text('nro_medidor').notNull().unique(),
+  latitud: decimal('latitud', { precision: 10, scale: 7 }),
+  longitud: decimal('longitud', { precision: 10, scale: 7 }),
+  estado: contratoEstadoEnum('estado').default('activo').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+export const tarifa = pgTable('tarifa', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  nombre: text('nombre').notNull(),
+  tramoMin: integer('tramo_min').notNull(),
+  tramoMax: integer('tramo_max').notNull(),
+  precioM3: decimal('precio_m3', { precision: 10, scale: 2 }).notNull(),
+  cargoFijo: decimal('cargo_fijo', { precision: 10, scale: 2 })
+    .default('0')
+    .notNull(),
+  estado: boolean('estado').default(true).notNull(),
+});
+
+export const lectura = pgTable('lectura', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  contratoId: text('contrato_id')
+    .notNull()
+    .references(() => contrato.id),
+  brigadistaId: text('brigadista_id')
+    .notNull()
+    .references(() => user.id),
+  valorLectura: integer('valor_lectura').notNull(),
+  fotoUrl: text('foto_url'),
+  latitud: decimal('latitud', { precision: 10, scale: 7 }),
+  longitud: decimal('longitud', { precision: 10, scale: 7 }),
+  fechaLectura: timestamp('fecha_lectura').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const factura = pgTable('factura', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  contratoId: text('contrato_id')
+    .notNull()
+    .references(() => contrato.id),
+  lecturaId: text('lectura_id')
+    .notNull()
+    .references(() => lectura.id),
+  periodo: text('periodo').notNull(),
+  consumoM3: integer('consumo_m3').notNull(),
+  tarifaId: text('tarifa_id')
+    .notNull()
+    .references(() => tarifa.id),
+  cargoFijo: decimal('cargo_fijo', { precision: 10, scale: 2 }),
+  subtotal: decimal('subtotal', { precision: 10, scale: 2 }),
+  total: decimal('total', { precision: 10, scale: 2 }).notNull(),
+  estado: facturaEstadoEnum('estado').default('pendiente').notNull(),
+  fechaVencimiento: date('fecha_vencimiento').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const pago = pgTable('pago', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  facturaId: text('factura_id')
+    .notNull()
+    .references(() => factura.id),
+  monto: decimal('monto', { precision: 10, scale: 2 }).notNull(),
+  metodoPago: pagoMetodoEnum('metodo_pago').default('qr_simple').notNull(),
+  referencia: text('referencia'),
+  qrData: text('qr_data'),
+  fechaPago: timestamp('fecha_pago').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const corte = pgTable('corte', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  contratoId: text('contrato_id')
+    .notNull()
+    .references(() => contrato.id),
+  brigadistaId: text('brigadista_id')
+    .notNull()
+    .references(() => user.id),
+  motivo: text('motivo').notNull(),
+  fotoUrl: text('foto_url'),
+  latitud: decimal('latitud', { precision: 10, scale: 7 }),
+  longitud: decimal('longitud', { precision: 10, scale: 7 }),
+  fechaCorte: timestamp('fecha_corte').defaultNow().notNull(),
+  estado: corteEstadoEnum('estado').default('efectuado').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
+  contratos: many(contrato),
+  lecturas: many(lectura),
+  cortes: many(corte),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -88,6 +256,73 @@ export const sessionRelations = relations(session, ({ one }) => ({
 export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, {
     fields: [account.userId],
+    references: [user.id],
+  }),
+}));
+
+export const distritoRelations = relations(distrito, ({ many }) => ({
+  contratos: many(contrato),
+}));
+
+export const contratoRelations = relations(contrato, ({ one, many }) => ({
+  usuario: one(user, {
+    fields: [contrato.usuarioId],
+    references: [user.id],
+  }),
+  distrito: one(distrito, {
+    fields: [contrato.distritoId],
+    references: [distrito.id],
+  }),
+  lecturas: many(lectura),
+  facturas: many(factura),
+  cortes: many(corte),
+}));
+
+export const tarifaRelations = relations(tarifa, ({ many }) => ({
+  facturas: many(factura),
+}));
+
+export const lecturaRelations = relations(lectura, ({ one }) => ({
+  contrato: one(contrato, {
+    fields: [lectura.contratoId],
+    references: [contrato.id],
+  }),
+  brigadista: one(user, {
+    fields: [lectura.brigadistaId],
+    references: [user.id],
+  }),
+}));
+
+export const facturaRelations = relations(factura, ({ one, many }) => ({
+  contrato: one(contrato, {
+    fields: [factura.contratoId],
+    references: [contrato.id],
+  }),
+  lectura: one(lectura, {
+    fields: [factura.lecturaId],
+    references: [lectura.id],
+  }),
+  tarifa: one(tarifa, {
+    fields: [factura.tarifaId],
+    references: [tarifa.id],
+  }),
+  pagos: many(pago),
+}));
+
+export const pagoRelations = relations(pago, ({ one }) => ({
+  factura: one(factura, {
+    fields: [pago.facturaId],
+    references: [factura.id],
+  }),
+}));
+
+export const corteRelations = relations(corte, ({ one }) => ({
+  contrato: one(contrato, {
+    fields: [corte.contratoId],
+    references: [contrato.id],
+  }),
+  brigadista: one(user, {
+    fields: [corte.brigadistaId],
     references: [user.id],
   }),
 }));
