@@ -1,0 +1,194 @@
+
+Enum "contrato_estado" {
+  "activo"
+  "suspendido"
+  "cortado"
+}
+
+Enum "corte_estado" {
+  "efectuado"
+  "reconectado"
+}
+
+Enum "factura_estado" {
+  "pendiente"
+  "pagada"
+  "vencida"
+}
+
+Enum "pago_metodo" {
+  "qr_simple"
+  "efectivo"
+  "transferencia"
+}
+
+Enum "role" {
+  "admin"
+  "brigadista"
+  "ciudadano"
+}
+
+Table "account" {
+  "id" text [pk, not null]
+  "account_id" text [not null]
+  "provider_id" text [not null]
+  "user_id" text [not null]
+  "access_token" text
+  "refresh_token" text
+  "access_token_expires_at" timestamp
+  "refresh_token_expires_at" timestamp
+  "scope" text
+  "id_token" text
+  "password" text
+  "created_at" timestamp [not null, default: `now()`]
+  "updated_at" timestamp [not null]
+
+  Indexes {
+    user_id [type: btree, name: "account_userId_idx"]
+  }
+}
+
+Table "contrato" {
+  "id" text [pk, not null]
+  "nro_contrato" text [unique, not null]
+  "usuario_id" text [not null]
+  "distrito_id" text [not null]
+  "direccion" text [not null]
+  "nro_medidor" text [unique, not null]
+  "latitud" numeric(10,7)
+  "longitud" numeric(10,7)
+  "estado" contrato_estado [not null, default: `'activo'::public.contrato_estado`]
+  "created_at" timestamp [not null, default: `now()`]
+  "updated_at" timestamp [not null, default: `now()`]
+}
+
+Table "corte" {
+  "id" text [pk, not null]
+  "contrato_id" text [not null]
+  "brigadista_id" text [not null]
+  "motivo" text [not null]
+  "foto_url" text
+  "latitud" numeric(10,7)
+  "longitud" numeric(10,7)
+  "fecha_corte" timestamp [not null, default: `now()`]
+  "estado" corte_estado [not null, default: `'efectuado'::public.corte_estado`]
+  "created_at" timestamp [not null, default: `now()`]
+}
+
+Table "distrito" {
+  "id" text [pk, not null]
+  "nombre" text [not null]
+  "codigo" text [unique, not null]
+}
+
+Table "factura" {
+  "id" text [pk, not null]
+  "contrato_id" text [not null]
+  "lectura_id" text [not null]
+  "periodo" text [not null]
+  "consumo_m3" integer [not null]
+  "tarifa_id" text [not null]
+  "cargo_fijo" numeric(10,2)
+  "subtotal" numeric(10,2)
+  "total" numeric(10,2) [not null]
+  "estado" factura_estado [not null, default: `'pendiente'::public.factura_estado`]
+  "fecha_vencimiento" date [not null]
+  "created_at" timestamp [not null, default: `now()`]
+}
+
+Table "lectura" {
+  "id" text [pk, not null]
+  "contrato_id" text [not null]
+  "brigadista_id" text [not null]
+  "valor_lectura" integer [not null]
+  "foto_url" text
+  "latitud" numeric(10,7)
+  "longitud" numeric(10,7)
+  "fecha_lectura" timestamp [not null, default: `now()`]
+  "created_at" timestamp [not null, default: `now()`]
+}
+
+Table "pago" {
+  "id" text [pk, not null]
+  "factura_id" text [not null]
+  "monto" numeric(10,2) [not null]
+  "metodo_pago" pago_metodo [not null, default: `'qr_simple'::public.pago_metodo`]
+  "referencia" text
+  "qr_data" text
+  "fecha_pago" timestamp [not null, default: `now()`]
+  "created_at" timestamp [not null, default: `now()`]
+}
+
+Table "session" {
+  "id" text [pk, not null]
+  "expires_at" timestamp [not null]
+  "token" text [unique, not null]
+  "ip_address" text
+  "user_agent" text
+  "user_id" text [not null]
+  "created_at" timestamp [not null, default: `now()`]
+  "updated_at" timestamp [not null]
+
+  Indexes {
+    user_id [type: btree, name: "session_userId_idx"]
+  }
+}
+
+Table "tarifa" {
+  "id" text [pk, not null]
+  "nombre" text [not null]
+  "tramo_min" integer [not null]
+  "tramo_max" integer [not null]
+  "precio_m3" numeric(10,2) [not null]
+  "cargo_fijo" numeric(10,2) [not null, default: `'0'::numeric`]
+  "estado" boolean [not null, default: true]
+}
+
+Table "user" {
+  "id" text [pk, not null]
+  "name" text [not null]
+  "email" text [unique, not null]
+  "email_verified" boolean [not null, default: false]
+  "image" text
+  "created_at" timestamp [not null, default: `now()`]
+  "updated_at" timestamp [not null, default: `now()`]
+  "role" role [not null, default: `'ciudadano'::public.role`]
+  "estado" boolean [not null, default: true]
+}
+
+Table "verification" {
+  "id" text [pk, not null]
+  "identifier" text [not null]
+  "value" text [not null]
+  "expires_at" timestamp [not null]
+  "created_at" timestamp [not null, default: `now()`]
+  "updated_at" timestamp [not null, default: `now()`]
+
+  Indexes {
+    identifier [type: btree, name: "verification_identifier_idx"]
+  }
+}
+
+Ref "account_user_id_user_id_fk":"user"."id" < "account"."user_id" [delete: cascade]
+
+Ref "contrato_distrito_id_distrito_id_fk":"distrito"."id" < "contrato"."distrito_id"
+
+Ref "contrato_usuario_id_user_id_fk":"user"."id" < "contrato"."usuario_id"
+
+Ref "corte_brigadista_id_user_id_fk":"user"."id" < "corte"."brigadista_id"
+
+Ref "corte_contrato_id_contrato_id_fk":"contrato"."id" < "corte"."contrato_id"
+
+Ref "factura_contrato_id_contrato_id_fk":"contrato"."id" < "factura"."contrato_id"
+
+Ref "factura_lectura_id_lectura_id_fk":"lectura"."id" < "factura"."lectura_id"
+
+Ref "factura_tarifa_id_tarifa_id_fk":"tarifa"."id" < "factura"."tarifa_id"
+
+Ref "lectura_brigadista_id_user_id_fk":"user"."id" < "lectura"."brigadista_id"
+
+Ref "lectura_contrato_id_contrato_id_fk":"contrato"."id" < "lectura"."contrato_id"
+
+Ref "pago_factura_id_factura_id_fk":"factura"."id" < "pago"."factura_id"
+
+Ref "session_user_id_user_id_fk":"user"."id" < "session"."user_id" [delete: cascade]
