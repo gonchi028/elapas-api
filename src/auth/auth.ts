@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { hash, compare } from 'bcryptjs';
 import { db } from '../db/connection';
 
 export const auth = betterAuth({
@@ -9,6 +10,10 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
+    password: {
+      hash: async (password: string) => hash(password, 10),
+      verify: async ({ hash, password }) => compare(password, hash),
+    },
   },
   user: {
     additionalFields: {

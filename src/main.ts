@@ -13,7 +13,12 @@ async function bootstrap() {
 
   app.use(json({ limit: '10kb' }));
 
-  app.enableCors();
+  app.enableCors({
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Origin'],
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
