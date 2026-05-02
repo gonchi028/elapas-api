@@ -6,21 +6,35 @@ import {
   Param,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiQuery,
+  ApiOperation,
+  ApiParam,
+  ApiProduces,
+  ApiResponse,
+} from '@nestjs/swagger';
+import { type Response } from 'express';
 import { FacturasService } from './facturas.service';
 import { GenerateFacturasDto } from './dto/generate-facturas.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { PdfService } from '../common/pdf/pdf.service';
 
 @ApiTags('Facturas')
 @ApiBearerAuth()
 @UseGuards(AuthGuard, RolesGuard)
 @Controller('facturas')
 export class FacturasController {
-  constructor(private readonly facturasService: FacturasService) {}
+  constructor(
+    private readonly facturasService: FacturasService,
+    private readonly pdfService: PdfService,
+  ) {}
 
   @Get()
   @Roles('admin')
@@ -51,6 +65,33 @@ export class FacturasController {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
     const data = await this.facturasService.findByUsuario(req.user.id);
     return { success: true, data };
+  }
+
+  @Get(':id/pdf')
+  @Roles('admin', 'ciudadano')
+  @ApiOperation({
+    summary: 'Obtener factura en PDF',
+    description:
+      'Genera y devuelve una factura detallada en formato PDF con los datos del usuario, contrato, consumo y totales.',
+  })
+  @ApiParam({ name: 'id', description: 'ID de la factura' })
+  @ApiProduces('application/pdf')
+  @ApiResponse({
+    status: 200,
+    description: 'PDF generado correctamente',
+    schema: { type: 'string', format: 'binary' },
+  })
+  @ApiResponse({ status: 404, description: 'Factura no encontrada' })
+  async getPdf(@Param('id') id: string, @Res() res: Response) {
+    const detail = await this.facturasService.findDetail(id);
+    const buffer = await this.pdfService.generateFacturaPdf(detail);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="factura-${detail.factura.periodo}-${detail.contrato.nroContrato}.pdf"`,
+    );
+    res.send(buffer);
   }
 
   @Get(':id')

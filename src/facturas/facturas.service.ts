@@ -5,6 +5,8 @@ import {
   contrato,
   lectura,
   tarifa,
+  user,
+  distrito,
   type contratoEstadoEnum,
   type facturaEstadoEnum,
 } from '../db/schema';
@@ -138,5 +140,31 @@ export class FacturasService {
     });
 
     return generated;
+  }
+
+  async findDetail(id: string) {
+    const rows = await this.db
+      .select()
+      .from(factura)
+      .innerJoin(contrato, eq(factura.contratoId, contrato.id))
+      .innerJoin(user, eq(contrato.usuarioId, user.id))
+      .innerJoin(distrito, eq(contrato.distritoId, distrito.id))
+      .innerJoin(lectura, eq(factura.lecturaId, lectura.id))
+      .innerJoin(tarifa, eq(factura.tarifaId, tarifa.id))
+      .where(eq(factura.id, id));
+
+    if (!rows.length) {
+      throw new NotFoundException(`Factura ${id} no encontrada`);
+    }
+
+    const row = rows[0];
+    return {
+      factura: row.factura,
+      contrato: row.contrato,
+      usuario: row.user,
+      distrito: row.distrito,
+      lectura: row.lectura,
+      tarifa: row.tarifa,
+    };
   }
 }
