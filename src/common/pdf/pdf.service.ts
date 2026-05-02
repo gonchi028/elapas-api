@@ -321,34 +321,64 @@ export function buildFacturaDoc(data: FacturaPdfData): TDocumentDefinitions {
       { text: '', margin: [0, 15] },
 
       {
-        table: {
-          widths: ['*', '*'],
-          body: [
-            [
+        columns: [
+          {
+            width: '*',
+            stack: [
               {
-                stack: [
-                  {
-                    text: 'Período de facturación',
-                    fontSize: 9,
-                    color: '#6b7280',
-                  },
-                  { text: factura.periodo, bold: true },
-                ],
-              },
-              {
-                stack: [
-                  {
-                    text: 'Fecha de vencimiento',
-                    fontSize: 9,
-                    color: '#6b7280',
-                  },
-                  { text: formatDate(factura.fechaVencimiento), bold: true },
-                ],
+                table: {
+                  widths: ['*', '*'],
+                  body: [
+                    [
+                      {
+                        stack: [
+                          {
+                            text: 'Período de facturación',
+                            fontSize: 9,
+                            color: '#6b7280',
+                          },
+                          { text: factura.periodo, bold: true },
+                        ],
+                      },
+                      {
+                        stack: [
+                          {
+                            text: 'Fecha de vencimiento',
+                            fontSize: 9,
+                            color: '#6b7280',
+                          },
+                          {
+                            text: formatDate(factura.fechaVencimiento),
+                            bold: true,
+                          },
+                        ],
+                      },
+                    ],
+                  ],
+                },
+                layout: 'noBorders',
               },
             ],
-          ],
-        },
-        layout: 'noBorders',
+          },
+          {
+            width: 80,
+            alignment: 'center',
+            stack: [
+              {
+                qr: factura.id,
+                fit: 70,
+                alignment: 'center',
+              },
+              {
+                text: 'ID de factura',
+                fontSize: 7,
+                color: '#9ca3af',
+                alignment: 'center',
+                margin: [0, 2, 0, 0],
+              },
+            ],
+          },
+        ],
       },
     ],
 
