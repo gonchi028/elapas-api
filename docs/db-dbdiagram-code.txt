@@ -156,6 +156,17 @@ Table "user" {
   "estado" boolean [not null, default: true]
 }
 
+Table "asignacion" {
+  "id" text [pk, not null]
+  "brigadista_id" text [not null]
+  "contrato_id" text [not null]
+  "created_at" timestamp [not null, default: `now()`]
+
+  Indexes {
+    (brigadista_id, contrato_id) [type: btree, unique, name: "asignacion_unique_idx"]
+  }
+}
+
 Table "verification" {
   "id" text [pk, not null]
   "identifier" text [not null]
@@ -170,6 +181,10 @@ Table "verification" {
 }
 
 Ref "account_user_id_user_id_fk":"user"."id" < "account"."user_id" [delete: cascade]
+
+Ref "asignacion_brigadista_id_user_id_fk":"user"."id" < "asignacion"."brigadista_id"
+
+Ref "asignacion_contrato_id_contrato_id_fk":"contrato"."id" < "asignacion"."contrato_id"
 
 Ref "contrato_distrito_id_distrito_id_fk":"distrito"."id" < "contrato"."distrito_id"
 
