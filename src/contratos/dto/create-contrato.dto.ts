@@ -12,30 +12,15 @@ export class CreateContratoDto {
   @IsNotEmpty()
   usuarioId: string;
 
-  @ApiProperty({ description: 'ID del distrito' })
+  @ApiProperty({ description: 'ID del predio' })
   @IsString()
   @IsNotEmpty()
-  distritoId: string;
+  predioId: string;
 
-  @ApiProperty({ description: 'Dirección del inmueble' })
+  @ApiProperty({ description: 'ID del medidor' })
   @IsString()
   @IsNotEmpty()
-  direccion: string;
-
-  @ApiProperty({ description: 'Número de medidor' })
-  @IsString()
-  @IsNotEmpty()
-  nroMedidor: string;
-
-  @ApiPropertyOptional({ description: 'Latitud GPS' })
-  @IsOptional()
-  @IsString()
-  latitud?: string;
-
-  @ApiPropertyOptional({ description: 'Longitud GPS' })
-  @IsOptional()
-  @IsString()
-  longitud?: string;
+  medidorId: string;
 
   @ApiPropertyOptional({
     enum: ['activo', 'suspendido', 'cortado'],

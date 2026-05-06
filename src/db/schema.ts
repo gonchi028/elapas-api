@@ -127,6 +127,19 @@ export const distrito = pgTable('distrito', {
   codigo: text('codigo').notNull().unique(),
 });
 
+export const predio = pgTable('predio', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  distritoId: text('distrito_id')
+    .notNull()
+    .references(() => distrito.id),
+  direccion: text('direccion').notNull(),
+  latitud: decimal('latitud', { precision: 10, scale: 7 }),
+  longitud: decimal('longitud', { precision: 10, scale: 7 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const contrato = pgTable('contrato', {
   id: text('id')
     .primaryKey()
@@ -135,19 +148,29 @@ export const contrato = pgTable('contrato', {
   usuarioId: text('usuario_id')
     .notNull()
     .references(() => user.id),
-  distritoId: text('distrito_id')
+  predioId: text('predio_id')
     .notNull()
-    .references(() => distrito.id),
-  direccion: text('direccion').notNull(),
-  nroMedidor: text('nro_medidor').notNull().unique(),
-  latitud: decimal('latitud', { precision: 10, scale: 7 }),
-  longitud: decimal('longitud', { precision: 10, scale: 7 }),
+    .references(() => predio.id),
+  medidorId: text('medidor_id')
+    .notNull()
+    .references(() => medidor.id),
   estado: contratoEstadoEnum('estado').default('activo').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
+});
+
+export const medidor = pgTable('medidor', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  nroMedidor: text('nro_medidor').notNull().unique(),
+  contratoId: text('contrato_id')
+    .notNull()
+    .references(() => contrato.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 export const tarifa = pgTable('tarifa', {
@@ -285,7 +308,7 @@ export const accountRelations = relations(account, ({ one }) => ({
 }));
 
 export const distritoRelations = relations(distrito, ({ many }) => ({
-  contratos: many(contrato),
+  predios: many(predio),
 }));
 
 export const contratoRelations = relations(contrato, ({ one, many }) => ({
@@ -293,14 +316,33 @@ export const contratoRelations = relations(contrato, ({ one, many }) => ({
     fields: [contrato.usuarioId],
     references: [user.id],
   }),
-  distrito: one(distrito, {
-    fields: [contrato.distritoId],
-    references: [distrito.id],
+  predio: one(predio, {
+    fields: [contrato.predioId],
+    references: [predio.id],
+  }),
+  medidor: one(medidor, {
+    fields: [contrato.medidorId],
+    references: [medidor.id],
   }),
   lecturas: many(lectura),
   facturas: many(factura),
   cortes: many(corte),
   asignaciones: many(asignacion),
+}));
+
+export const predioRelations = relations(predio, ({ one, many }) => ({
+  distrito: one(distrito, {
+    fields: [predio.distritoId],
+    references: [distrito.id],
+  }),
+  contratos: many(contrato),
+}));
+
+export const medidorRelations = relations(medidor, ({ one }) => ({
+  contrato: one(contrato, {
+    fields: [medidor.contratoId],
+    references: [contrato.id],
+  }),
 }));
 
 export const tarifaRelations = relations(tarifa, ({ many }) => ({

@@ -5,6 +5,8 @@ import {
   contrato,
   user,
   distrito,
+  predio,
+  medidor,
   type roleEnum,
 } from '../db/schema';
 import { eq, and, sql, inArray, desc, SQL } from 'drizzle-orm';
@@ -40,11 +42,15 @@ export class AsignacionesService {
         .select({
           asignacion,
           contrato,
+          predio,
           distrito,
+          medidor,
         })
         .from(asignacion)
         .innerJoin(contrato, eq(asignacion.contratoId, contrato.id))
-        .innerJoin(distrito, eq(contrato.distritoId, distrito.id))
+        .innerJoin(predio, eq(contrato.predioId, predio.id))
+        .innerJoin(distrito, eq(predio.distritoId, distrito.id))
+        .innerJoin(medidor, eq(contrato.medidorId, medidor.id))
         .where(where)
         .orderBy(desc(asignacion.createdAt))
         .limit(limit)
@@ -59,11 +65,15 @@ export class AsignacionesService {
       .select({
         asignacion,
         contrato,
+        predio,
         distrito,
+        medidor,
       })
       .from(asignacion)
       .innerJoin(contrato, eq(asignacion.contratoId, contrato.id))
-      .innerJoin(distrito, eq(contrato.distritoId, distrito.id))
+      .innerJoin(predio, eq(contrato.predioId, predio.id))
+      .innerJoin(distrito, eq(predio.distritoId, distrito.id))
+      .innerJoin(medidor, eq(contrato.medidorId, medidor.id))
       .where(eq(asignacion.brigadistaId, brigadistaId))
       .orderBy(desc(asignacion.createdAt));
   }

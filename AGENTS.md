@@ -63,7 +63,9 @@ NestJS 11 API (TypeScript) for the **ELAPAS Water Utility Management System**. P
 | Auth | `src/auth/` | Better Auth + guards + decorators |
 | Usuarios | `src/usuarios/` | Admin CRUD for users |
 | Distritos | `src/distritos/` | Admin CRUD for districts |
-| Contratos | `src/contratos/` | Contracts (citizens see mis-contratos) |
+| Predios | `src/predios/` | Admin CRUD for properties (address, GPS, district) |
+| Medidores | `src/medidores/` | Admin CRUD for meters (linked to contrato) |
+| Contratos | `src/contratos/` | Service contracts (references predio + medidor; citizens see mis-contratos) |
 | Tarifas | `src/tarifas/` | Tariff tier management |
 | Asignaciones | `src/asignaciones/` | Admin assigns contracts to brigadistas (route management) |
 | Lecturas | `src/lecturas/` | Meter readings by brigadistas (scoped to assigned contracts) |
@@ -101,7 +103,7 @@ NestJS 11 API (TypeScript) for the **ELAPAS Water Utility Management System**. P
 - ESLint flat config (`eslint.config.mjs`) — typescript-eslint `recommendedTypeChecked` + prettier
 - Prettier: **single quotes**, **trailing commas**
 - `@typescript-eslint/no-explicit-any` is **off**
-- `@typescript-eslint/no-floating-promises` and `no-unsafe-argument` are **warn**
+- `@typescript-eslint/no-floating-promises`, `no-unsafe-argument`, `no-unsafe-assignment`, `no-unsafe-member-access`, `no-unsafe-return` are **warn**
 
 ## TypeScript
 

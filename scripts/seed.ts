@@ -4,6 +4,8 @@ import {
   user,
   account,
   distrito,
+  predio,
+  medidor,
   contrato,
   tarifa,
   lectura,
@@ -12,7 +14,7 @@ import {
   corte,
   asignacion,
 } from '../src/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { hash } from 'bcryptjs';
 import crypto from 'crypto';
 
@@ -25,7 +27,9 @@ async function clean() {
   await db.delete(corte);
   await db.delete(factura);
   await db.delete(lectura);
+  await db.delete(medidor);
   await db.delete(contrato);
+  await db.delete(predio);
   await db.delete(tarifa);
   await db.delete(distrito);
   await db.delete(account);
@@ -97,51 +101,15 @@ async function seedUsers() {
   const hashedPassword = await hash('password123', 10);
 
   const usersData = [
-    {
-      name: 'Carlos Mendoza',
-      email: 'admin@elapas.com',
-      role: 'admin' as const,
-    },
-    {
-      name: 'María Quispe',
-      email: 'brigadista1@elapas.com',
-      role: 'brigadista' as const,
-    },
-    {
-      name: 'Juan Pérez',
-      email: 'brigadista2@elapas.com',
-      role: 'brigadista' as const,
-    },
-    {
-      name: 'Ana Flores',
-      email: 'brigadista3@elapas.com',
-      role: 'brigadista' as const,
-    },
-    {
-      name: 'Roberto Guzmán',
-      email: 'ciudadano1@elapas.com',
-      role: 'ciudadano' as const,
-    },
-    {
-      name: 'Lucía Romero',
-      email: 'ciudadano2@elapas.com',
-      role: 'ciudadano' as const,
-    },
-    {
-      name: 'Pedro Villca',
-      email: 'ciudadano3@elapas.com',
-      role: 'ciudadano' as const,
-    },
-    {
-      name: 'Carmen Tapia',
-      email: 'ciudadano4@elapas.com',
-      role: 'ciudadano' as const,
-    },
-    {
-      name: 'Fernando Rojas',
-      email: 'ciudadano5@elapas.com',
-      role: 'ciudadano' as const,
-    },
+    { name: 'Carlos Mendoza', email: 'admin@elapas.com', role: 'admin' as const },
+    { name: 'María Quispe', email: 'brigadista1@elapas.com', role: 'brigadista' as const },
+    { name: 'Juan Pérez', email: 'brigadista2@elapas.com', role: 'brigadista' as const },
+    { name: 'Ana Flores', email: 'brigadista3@elapas.com', role: 'brigadista' as const },
+    { name: 'Roberto Guzmán', email: 'ciudadano1@elapas.com', role: 'ciudadano' as const },
+    { name: 'Lucía Romero', email: 'ciudadano2@elapas.com', role: 'ciudadano' as const },
+    { name: 'Pedro Villca', email: 'ciudadano3@elapas.com', role: 'ciudadano' as const },
+    { name: 'Carmen Tapia', email: 'ciudadano4@elapas.com', role: 'ciudadano' as const },
+    { name: 'Fernando Rojas', email: 'ciudadano5@elapas.com', role: 'ciudadano' as const },
   ];
 
   const created = await db
@@ -172,115 +140,92 @@ async function seedUsers() {
   return created;
 }
 
-async function seedContratos(
-  users: (typeof user.$inferSelect)[],
-  distritos: (typeof distrito.$inferSelect)[],
-) {
-  console.log('Creando contratos...');
-  const ciudadanos = users.filter((u) => u.role === 'ciudadano');
+async function seedPredios(distritos: (typeof distrito.$inferSelect)[]) {
+  console.log('Creando predios...');
 
   const templates = [
-    {
-      ciudadano: 0,
-      distrito: 0,
-      dir: 'Calle Sucre #123',
-      med: 'MED-0001',
-      lat: '-19.0461000',
-      lon: '-65.2595000',
-    },
-    {
-      ciudadano: 0,
-      distrito: 1,
-      dir: 'Av. Grau #456',
-      med: 'MED-0002',
-      lat: '-19.0350000',
-      lon: '-65.2480000',
-    },
-    {
-      ciudadano: 1,
-      distrito: 0,
-      dir: 'Calle Bolívar #789',
-      med: 'MED-0003',
-      lat: '-19.0420000',
-      lon: '-65.2620000',
-    },
-    {
-      ciudadano: 1,
-      distrito: 2,
-      dir: 'Calle Arenales #321',
-      med: 'MED-0004',
-      lat: '-19.0580000',
-      lon: '-65.2550000',
-    },
-    {
-      ciudadano: 2,
-      distrito: 1,
-      dir: 'Av. Jaime Mendoza #654',
-      med: 'MED-0005',
-      lat: '-19.0320000',
-      lon: '-65.2450000',
-    },
-    {
-      ciudadano: 2,
-      distrito: 3,
-      dir: 'Calle Loa #987',
-      med: 'MED-0006',
-      lat: '-19.0400000',
-      lon: '-65.2300000',
-    },
-    {
-      ciudadano: 3,
-      distrito: 0,
-      dir: 'Av. Hernando Sanabria #147',
-      med: 'MED-0007',
-      lat: '-19.0480000',
-      lon: '-65.2610000',
-    },
-    {
-      ciudadano: 3,
-      distrito: 4,
-      dir: 'Calle Pérez de Holguín #258',
-      med: 'MED-0008',
-      lat: '-19.0500000',
-      lon: '-65.2750000',
-    },
-    {
-      ciudadano: 4,
-      distrito: 2,
-      dir: 'Av. German Busch #369',
-      med: 'MED-0009',
-      lat: '-19.0600000',
-      lon: '-65.2500000',
-    },
-    {
-      ciudadano: 4,
-      distrito: 3,
-      dir: 'Calle Chuquisaca #741',
-      med: 'MED-0010',
-      lat: '-19.0380000',
-      lon: '-65.2350000',
-    },
+    { distrito: 0, dir: 'Calle Sucre #123', lat: '-19.0461000', lon: '-65.2595000' },
+    { distrito: 1, dir: 'Av. Grau #456', lat: '-19.0350000', lon: '-65.2480000' },
+    { distrito: 0, dir: 'Calle Bolívar #789', lat: '-19.0420000', lon: '-65.2620000' },
+    { distrito: 2, dir: 'Calle Arenales #321', lat: '-19.0580000', lon: '-65.2550000' },
+    { distrito: 1, dir: 'Av. Jaime Mendoza #654', lat: '-19.0320000', lon: '-65.2450000' },
+    { distrito: 3, dir: 'Calle Loa #987', lat: '-19.0400000', lon: '-65.2300000' },
+    { distrito: 0, dir: 'Av. Hernando Sanabria #147', lat: '-19.0480000', lon: '-65.2610000' },
+    { distrito: 4, dir: 'Calle Pérez de Holguín #258', lat: '-19.0500000', lon: '-65.2750000' },
+    { distrito: 2, dir: 'Av. German Busch #369', lat: '-19.0600000', lon: '-65.2500000' },
+    { distrito: 3, dir: 'Calle Chuquisaca #741', lat: '-19.0380000', lon: '-65.2350000' },
   ];
 
   const data = await db
+    .insert(predio)
+    .values(
+      templates.map((t) => ({
+        id: uid(),
+        distritoId: distritos[t.distrito].id,
+        direccion: t.dir,
+        latitud: t.lat,
+        longitud: t.lon,
+      })),
+    )
+    .returning();
+
+  console.log(`  ${data.length} predios creados`);
+  return data;
+}
+
+async function seedContratosYMedidores(
+  users: (typeof user.$inferSelect)[],
+  predios: (typeof predio.$inferSelect)[],
+) {
+  console.log('Creando contratos y medidores...');
+  const ciudadanos = users.filter((u) => u.role === 'ciudadano');
+
+  const templates = [
+    { ciudadano: 0, predio: 0, med: 'MED-0001' },
+    { ciudadano: 0, predio: 1, med: 'MED-0002' },
+    { ciudadano: 1, predio: 2, med: 'MED-0003' },
+    { ciudadano: 1, predio: 3, med: 'MED-0004' },
+    { ciudadano: 2, predio: 4, med: 'MED-0005' },
+    { ciudadano: 2, predio: 5, med: 'MED-0006' },
+    { ciudadano: 3, predio: 6, med: 'MED-0007' },
+    { ciudadano: 3, predio: 7, med: 'MED-0008' },
+    { ciudadano: 4, predio: 8, med: 'MED-0009' },
+    { ciudadano: 4, predio: 9, med: 'MED-0010' },
+  ];
+
+  const medidorIds = templates.map(() => uid());
+
+  await db.execute(sql`ALTER TABLE "contrato" DISABLE TRIGGER ALL`);
+  await db.execute(sql`ALTER TABLE "medidor" DISABLE TRIGGER ALL`);
+
+  const contratosData = await db
     .insert(contrato)
     .values(
       templates.map((t, i) => ({
         id: uid(),
         nroContrato: `CNT-${String(i + 1).padStart(3, '0')}`,
         usuarioId: ciudadanos[t.ciudadano].id,
-        distritoId: distritos[t.distrito].id,
-        direccion: t.dir,
-        nroMedidor: t.med,
-        latitud: t.lat,
-        longitud: t.lon,
+        predioId: predios[t.predio].id,
+        medidorId: medidorIds[i],
         estado: 'activo' as const,
       })),
     )
     .returning();
 
-  console.log(`  ${data.length} contratos creados`);
-  return data;
+  await db.insert(medidor).values(
+    templates.map((t, i) => ({
+      id: medidorIds[i],
+      nroMedidor: t.med,
+      contratoId: contratosData[i].id,
+    })),
+  );
+
+  await db.execute(sql`ALTER TABLE "contrato" ENABLE TRIGGER ALL`);
+  await db.execute(sql`ALTER TABLE "medidor" ENABLE TRIGGER ALL`);
+
+  console.log(`  ${contratosData.length} contratos creados`);
+  console.log(`  ${templates.length} medidores creados`);
+  return contratosData;
 }
 
 async function seedLecturas(
@@ -469,7 +414,8 @@ async function main() {
   const distritos = await seedDistritos();
   const tarifas = await seedTarifas();
   const users = await seedUsers();
-  const contratos = await seedContratos(users, distritos);
+  const predios = await seedPredios(distritos);
+  const contratos = await seedContratosYMedidores(users, predios);
   const asignaciones = await seedAsignaciones(contratos, users);
   const lecturas = await seedLecturas(contratos, users);
   const facturas = await seedFacturas(contratos, lecturas, tarifas);
@@ -480,7 +426,9 @@ async function main() {
   console.log(`   ${distritos.length} distritos`);
   console.log(`   ${tarifas.length} tarifas`);
   console.log(`   ${users.length} usuarios`);
+  console.log(`   ${predios.length} predios`);
   console.log(`   ${contratos.length} contratos`);
+  console.log(`   ${contratos.length} medidores`);
   console.log(`   ${asignaciones.length} asignaciones`);
   console.log(`   ${lecturas.length} lecturas`);
   console.log(`   ${facturas.length} facturas`);

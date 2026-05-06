@@ -12,6 +12,8 @@ import { PagosModule } from './pagos/pagos.module';
 import { CortesModule } from './cortes/cortes.module';
 import { ReportesModule } from './reportes/reportes.module';
 import { AsignacionesModule } from './asignaciones/asignaciones.module';
+import { PrediosModule } from './predios/predios.module';
+import { MedidoresModule } from './medidores/medidores.module';
 
 @Module({
   imports: [
@@ -19,6 +21,8 @@ import { AsignacionesModule } from './asignaciones/asignaciones.module';
     AuthModule,
     UsuariosModule,
     DistritosModule,
+    PrediosModule,
+    MedidoresModule,
     ContratosModule,
     TarifasModule,
     LecturasModule,

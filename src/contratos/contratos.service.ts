@@ -1,6 +1,12 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { DB_PROVIDER, type Database } from '../db/connection';
-import { contrato, type contratoEstadoEnum } from '../db/schema';
+import {
+  contrato,
+  predio,
+  medidor,
+  distrito,
+  type contratoEstadoEnum,
+} from '../db/schema';
 import { SQL, eq, and, sql, desc } from 'drizzle-orm';
 import { CreateContratoDto } from './dto/create-contrato.dto';
 import { UpdateContratoDto } from './dto/update-contrato.dto';
@@ -21,7 +27,7 @@ export class ContratosService {
 
     const conditions: (SQL | undefined)[] = [];
     if (filters.distritoId)
-      conditions.push(eq(contrato.distritoId, filters.distritoId));
+      conditions.push(eq(predio.distritoId, filters.distritoId));
     if (filters.estado)
       conditions.push(
         eq(
@@ -37,10 +43,17 @@ export class ContratosService {
       this.db
         .select({ count: sql<number>`count(*)::int` })
         .from(contrato)
+        .innerJoin(predio, eq(contrato.predioId, predio.id))
         .where(where),
       this.db
-        .select()
+        .select({
+          contrato,
+          predio,
+          medidor,
+        })
         .from(contrato)
+        .innerJoin(predio, eq(contrato.predioId, predio.id))
+        .innerJoin(medidor, eq(contrato.medidorId, medidor.id))
         .where(where)
         .orderBy(desc(contrato.createdAt))
         .limit(limit)
@@ -51,22 +64,36 @@ export class ContratosService {
   }
 
   async findOne(id: string) {
-    const [result] = await this.db
-      .select()
+    const rows = await this.db
+      .select({
+        contrato,
+        predio,
+        medidor,
+        distrito,
+      })
       .from(contrato)
+      .innerJoin(predio, eq(contrato.predioId, predio.id))
+      .innerJoin(medidor, eq(contrato.medidorId, medidor.id))
+      .innerJoin(distrito, eq(predio.distritoId, distrito.id))
       .where(eq(contrato.id, id));
 
-    if (!result) {
+    if (!rows.length) {
       throw new NotFoundException(`Contrato con id ${id} no encontrado`);
     }
 
-    return result;
+    return rows[0];
   }
 
   async findByUsuario(usuarioId: string) {
     return this.db
-      .select()
+      .select({
+        contrato,
+        predio,
+        medidor,
+      })
       .from(contrato)
+      .innerJoin(predio, eq(contrato.predioId, predio.id))
+      .innerJoin(medidor, eq(contrato.medidorId, medidor.id))
       .where(eq(contrato.usuarioId, usuarioId))
       .orderBy(desc(contrato.createdAt));
   }
@@ -77,11 +104,8 @@ export class ContratosService {
       .values({
         nroContrato: dto.nroContrato,
         usuarioId: dto.usuarioId,
-        distritoId: dto.distritoId,
-        direccion: dto.direccion,
-        nroMedidor: dto.nroMedidor,
-        latitud: dto.latitud,
-        longitud: dto.longitud,
+        predioId: dto.predioId,
+        medidorId: dto.medidorId,
       })
       .returning();
 
@@ -95,11 +119,8 @@ export class ContratosService {
 
     if (dto.nroContrato !== undefined) values.nroContrato = dto.nroContrato;
     if (dto.usuarioId !== undefined) values.usuarioId = dto.usuarioId;
-    if (dto.distritoId !== undefined) values.distritoId = dto.distritoId;
-    if (dto.direccion !== undefined) values.direccion = dto.direccion;
-    if (dto.nroMedidor !== undefined) values.nroMedidor = dto.nroMedidor;
-    if (dto.latitud !== undefined) values.latitud = dto.latitud;
-    if (dto.longitud !== undefined) values.longitud = dto.longitud;
+    if (dto.predioId !== undefined) values.predioId = dto.predioId;
+    if (dto.medidorId !== undefined) values.medidorId = dto.medidorId;
     if (dto.estado !== undefined)
       values.estado =
         dto.estado as (typeof contratoEstadoEnum.enumValues)[number];

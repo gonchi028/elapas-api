@@ -52,11 +52,8 @@ Table "contrato" {
   "id" text [pk, not null]
   "nro_contrato" text [unique, not null]
   "usuario_id" text [not null]
-  "distrito_id" text [not null]
-  "direccion" text [not null]
-  "nro_medidor" text [unique, not null]
-  "latitud" numeric(10,7)
-  "longitud" numeric(10,7)
+  "predio_id" text [not null]
+  "medidor_id" text [not null]
   "estado" contrato_estado [not null, default: `'activo'::public.contrato_estado`]
   "created_at" timestamp [not null, default: `now()`]
   "updated_at" timestamp [not null, default: `now()`]
@@ -79,6 +76,22 @@ Table "distrito" {
   "id" text [pk, not null]
   "nombre" text [not null]
   "codigo" text [unique, not null]
+}
+
+Table "predio" {
+  "id" text [pk, not null]
+  "distrito_id" text [not null]
+  "direccion" text [not null]
+  "latitud" numeric(10,7)
+  "longitud" numeric(10,7)
+  "created_at" timestamp [not null, default: `now()`]
+}
+
+Table "medidor" {
+  "id" text [pk, not null]
+  "nro_medidor" text [unique, not null]
+  "contrato_id" text [not null]
+  "created_at" timestamp [not null, default: `now()`]
 }
 
 Table "factura" {
@@ -186,9 +199,15 @@ Ref "asignacion_brigadista_id_user_id_fk":"user"."id" < "asignacion"."brigadista
 
 Ref "asignacion_contrato_id_contrato_id_fk":"contrato"."id" < "asignacion"."contrato_id"
 
-Ref "contrato_distrito_id_distrito_id_fk":"distrito"."id" < "contrato"."distrito_id"
+Ref "contrato_predio_id_predio_id_fk":"predio"."id" < "contrato"."predio_id"
+
+Ref "contrato_medidor_id_medidor_id_fk":"medidor"."id" < "contrato"."medidor_id"
 
 Ref "contrato_usuario_id_user_id_fk":"user"."id" < "contrato"."usuario_id"
+
+Ref "medidor_contrato_id_contrato_id_fk":"contrato"."id" < "medidor"."contrato_id"
+
+Ref "predio_distrito_id_distrito_id_fk":"distrito"."id" < "predio"."distrito_id"
 
 Ref "corte_brigadista_id_user_id_fk":"user"."id" < "corte"."brigadista_id"
 

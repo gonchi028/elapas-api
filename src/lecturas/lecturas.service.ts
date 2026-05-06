@@ -5,7 +5,14 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { DB_PROVIDER, type Database } from '../db/connection';
-import { asignacion, contrato, distrito, lectura } from '../db/schema';
+import {
+  asignacion,
+  contrato,
+  distrito,
+  lectura,
+  medidor,
+  predio,
+} from '../db/schema';
 import { SQL, eq, and, sql, desc, gte, lte, inArray } from 'drizzle-orm';
 import { CreateLecturaDto } from './dto/create-lectura.dto';
 
@@ -85,13 +92,17 @@ export class LecturasService {
 
     const contratoIds = asignaciones.map((a) => a.contratoId);
 
-    const contratosWithDistrito = await this.db
+    const contratosWithDetails = await this.db
       .select({
         contrato,
         distrito,
+        predio,
+        medidor,
       })
       .from(contrato)
-      .innerJoin(distrito, eq(contrato.distritoId, distrito.id))
+      .innerJoin(predio, eq(contrato.predioId, predio.id))
+      .innerJoin(distrito, eq(predio.distritoId, distrito.id))
+      .innerJoin(medidor, eq(contrato.medidorId, medidor.id))
       .where(inArray(contrato.id, contratoIds));
 
     const currentPeriod = this.getCurrentPeriod();
@@ -124,9 +135,11 @@ export class LecturasService {
       }
     }
 
-    return contratosWithDistrito.map((row) => ({
+    return contratosWithDetails.map((row) => ({
       contrato: row.contrato,
       distrito: row.distrito,
+      predio: row.predio,
+      medidor: row.medidor,
       estadoLectura: leidoSet.has(row.contrato.id)
         ? ('leido' as const)
         : ('pendiente' as const),
