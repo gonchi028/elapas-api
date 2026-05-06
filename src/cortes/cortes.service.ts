@@ -1,7 +1,12 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { SQL, eq, and, sql, desc, gte, lte } from 'drizzle-orm';
 import { DB_PROVIDER, type Database } from '../db/connection';
-import { corte, contrato, contratoEstadoEnum } from '../db/schema';
+import { asignacion, corte, contrato, contratoEstadoEnum } from '../db/schema';
 
 @Injectable()
 export class CortesService {
@@ -82,6 +87,23 @@ export class CortesService {
     if (!contratoFound) {
       throw new NotFoundException(
         `Contrato con id ${dto.contratoId} no encontrado`,
+      );
+    }
+
+    const isAssigned = await this.db
+      .select({ id: asignacion.id })
+      .from(asignacion)
+      .where(
+        and(
+          eq(asignacion.brigadistaId, brigadistaId),
+          eq(asignacion.contratoId, dto.contratoId),
+        ),
+      )
+      .limit(1);
+
+    if (isAssigned.length === 0) {
+      throw new ForbiddenException(
+        'No tienes permiso para registrar cortes en este contrato. El contrato no está asignado a tu ruta.',
       );
     }
 

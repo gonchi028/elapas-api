@@ -98,7 +98,7 @@ Los brigadistas no cuentan con una herramienta digital unificada para registrar 
 │                     PostgreSQL                                  │
 │                                                                 │
 │  usuarios │ contratos │ lecturas │ facturas │ pagos │ cortes    │
-│  tarifas  │ distritos │ roles    │ logs     │       │           │
+│  tarifas  │ distritos │ roles    │ logs     │ asignaciones     │
 └─────────────────────────────────────────────────────────────────┘
          │
          ▼
@@ -190,7 +190,7 @@ mobile/
 | ID | User Story |
 |----|-----------|
 | US-T1 | Como brigadista, quiero iniciar sesión en la app móvil con mis credenciales para acceder a mis funciones de campo. |
-| US-T2 | Como brigadista, quiero ver la lista de medidores asignados a mi ruta del día para planificar mi recorrido. |
+| US-T2 | Como brigadista, quiero ver la lista de medidores asignados a mi ruta del día (con estado pendiente/leído) para planificar mi recorrido. |
 | US-T3 | Como brigadista, quiero registrar la lectura de un medidor ingresando el valor numérico para que el sistema calcule el consumo. |
 | US-T4 | Como brigadista, quiero que se registre automáticamente mi ubicación GPS al tomar una lectura para que quede constancia de mi presencia en el lugar. |
 | US-T5 | Como brigadista, quiero tomar una fotografía del medidor como evidencia del estado y la lectura registrada. |
@@ -253,7 +253,7 @@ mobile/
 | ID | Requisito | Criterios de Aceptación |
 |----|-----------|------------------------|
 | AM-P0-01 | Login con credenciales de brigadista | Pantalla de login que valida contra la API y almacena el JWT localmente |
-| AM-P0-02 | Lista de medidores/ruta asignada | **Given** un brigadista logueado, **When** abre la app, **Then** ve los contratos asignados con dirección y estado (pendiente/leído) |
+| AM-P0-02 | Lista de medidores/ruta asignada | **Given** un brigadista logueado, **When** abre la app, **Then** ve los contratos asignados con dirección y estado (pendiente/leído). Las asignaciones son gestionadas por el administrador a través del módulo de Asignaciones. |
 | AM-P0-03 | Formulario de registro de lectura | Input numérico para valor del medidor + captura de foto + GPS automático. Validación: lectura >= lectura anterior |
 | AM-P0-04 | Captura de fotografía con cámara del dispositivo | Usar cámara nativa vía Expo ImagePicker. La foto se sube a /api/lecturas/:id/foto |
 | AM-P0-05 | Registro de geolocalización automática | Al registrar lectura/corte, obtener coordenadas GPS y enviarlas a la API |
@@ -336,11 +336,11 @@ mobile/
                   │            │                  │ estado      │
                   │            │                  └─────────────┘
                   │            │
-        ┌─────────┘            │
-        │                      │
-        │    ┌─────────────────┴──────────────┐
-        │    │                                │
-        ▼    ▼                                ▼
+         ┌─────────┘            │
+         │                      │
+         │    ┌─────────────────┴──────────────┐
+         │    │                                │
+         ▼    ▼                                ▼
 ┌───────────────┐                     ┌──────────────────┐
 │  lecturas     │                     │    facturas      │
 ├───────────────┤                     ├──────────────────┤
@@ -370,7 +370,15 @@ mobile/
 │ created_at    │                     │ qr_data          │
 └───────────────┘                     │ fecha_pago       │
                                       │ created_at       │
-                                      └──────────────────┘
+┌────────────────┐                    └──────────────────┘
+│  asignaciones  │
+├────────────────┤
+│ id (PK)        │
+│ brigadista_id  │──► usuarios.id
+│ contrato_id    │──► contratos.id
+│ created_at     │
+└────────────────┘
+  UNIQUE(brigadista_id, contrato_id)
 ```
 
 ### 7.2 Definición de Entidades
@@ -475,6 +483,15 @@ mobile/
 | estado | ENUM('efectuado', 'reconectado') | DEFAULT 'efectuado' | Estado del corte |
 | created_at | TIMESTAMP | DEFAULT NOW() | |
 
+#### `asignaciones`
+| Campo | Tipo | Restricciones | Descripción |
+|-------|------|---------------|-------------|
+| id | UUID | PK, auto | Identificador |
+| brigadista_id | UUID | FK → usuarios, NOT NULL | Brigadista asignado |
+| contrato_id | UUID | FK → contratos, NOT NULL | Contrato asignado |
+| created_at | TIMESTAMP | DEFAULT NOW() | Fecha de asignación |
+| | | UNIQUE(brigadista_id, contrato_id) | No se permite duplicar asignaciones |
+
 ---
 
 ## 8. API Design
@@ -513,8 +530,9 @@ mobile/
 |--------|----------|-------------|------|
 | GET | `/api/lecturas` | Listar lecturas (filtrable por fecha, brigadista) | Admin |
 | GET | `/api/lecturas/:id` | Detalle de lectura | Admin, Brigadista |
-| POST | `/api/lecturas` | Registrar lectura + foto + GPS | Brigadista |
-| GET | `/api/lecturas/ruta/:brigadista_id` | Ruta/contratos asignados al brigadista | Brigadista |
+| POST | `/api/lecturas` | Registrar lectura + foto + GPS | Brigadista (solo contratos asignados) |
+| GET | `/api/lecturas/mi-ruta` | Ruta del día: contratos asignados con estado pendiente/leído | Brigadista |
+| GET | `/api/lecturas/ruta/:brigadista_id` | ~~Ruta/contratos asignados al brigadista~~ (DEPRECATED) | Brigadista |
 
 ### 8.5 Tarifas
 
@@ -551,7 +569,19 @@ mobile/
 | GET | `/api/cortes` | Listar cortes (filtrable por distrito, fecha) | Admin |
 | GET | `/api/cortes/:id` | Detalle de corte | Admin |
 
-### 8.9 Reportes / Dashboard
+### 8.9 Asignaciones de Ruta
+
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/asignaciones` | Listar todas las asignaciones (filtrable por brigadistaId, paginado) | Admin |
+| GET | `/api/asignaciones/brigadista/:brigadistaId` | Obtener contratos asignados a un brigadista | Admin |
+| POST | `/api/asignaciones` | Asignar contratos a un brigadista (array de contratoIds) | Admin |
+| PUT | `/api/asignaciones/:brigadistaId` | Reemplazar todas las asignaciones de un brigadista | Admin |
+| DELETE | `/api/asignaciones/:id` | Eliminar una asignación individual | Admin |
+
+> **Regla de autorización:** Los brigadistas solo pueden registrar lecturas y cortes en contratos que les hayan sido asignados. Intentar operar en un contrato no asignado devuelve 403 Forbidden.
+
+### 8.10 Reportes / Dashboard
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
@@ -560,7 +590,7 @@ mobile/
 | GET | `/api/reportes/cortes-por-distrito` | Cortes agrupados por distrito | Admin |
 | GET | `/api/reportes/lecturas-por-brigadista` | Lecturas por brigadista en rango de fechas | Admin |
 
-### 8.10 Formato de Respuesta Estándar
+### 8.11 Formato de Respuesta Estándar
 
 ```json
 {
@@ -576,7 +606,7 @@ mobile/
 }
 ```
 
-### 8.11 Códigos de Error
+### 8.12 Códigos de Error
 
 | Código | Significado | Uso |
 |--------|------------|-----|
@@ -596,7 +626,7 @@ mobile/
 | # | Pantalla | Elementos principales |
 |---|----------|----------------------|
 | 1 | Login | Logo ELAPAS, campos email/password, botón "Ingresar" |
-| 2 | Home (Ruta del día) | Lista de contratos asignados, badge de estado (pendiente/leído), contador superior |
+| 2 | Home (Ruta del día) | Lista de contratos asignados (desde módulo de Asignaciones), badge de estado (pendiente/leído), contador superior, última lectura de referencia |
 | 3 | Registrar Lectura | Header con datos del contrato, input numérico, botón "Tomar foto", mapa con GPS, botón "Guardar lectura" |
 | 4 | Registrar Corte | Selector de contrato, campo motivo, botón "Tomar foto", GPS automático, botón "Registrar corte" |
 | 5 | Resumen del Día | Cards: lecturas realizadas, cortes realizados, botón "Cerrar jornada" |
@@ -629,7 +659,7 @@ CIUDADANO:
 Login → Dashboard → Historial | Facturas → Pagar (QR)
 
 BRIGADISTA (App):
-Login → Ruta del Día → Registrar Lectura | Registrar Corte → Resumen
+Login → Ruta del Día (GET /api/lecturas/mi-ruta) → Registrar Lectura | Registrar Corte → Resumen
 
 ADMIN:
 Login → Overview → Lecturas | Cortes | Recaudación | Usuarios | Tarifas
