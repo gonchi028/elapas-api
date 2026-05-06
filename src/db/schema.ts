@@ -9,6 +9,7 @@ import {
   decimal,
   date,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
 export const roleEnum = pgEnum('role', ['admin', 'brigadista', 'ciudadano']);
@@ -238,12 +239,35 @@ export const corte = pgTable('corte', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export const asignacion = pgTable(
+  'asignacion',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    brigadistaId: text('brigadista_id')
+      .notNull()
+      .references(() => user.id),
+    contratoId: text('contrato_id')
+      .notNull()
+      .references(() => contrato.id),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('asignacion_unique_idx').on(
+      table.brigadistaId,
+      table.contratoId,
+    ),
+  ],
+);
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
   contratos: many(contrato),
   lecturas: many(lectura),
   cortes: many(corte),
+  asignaciones: many(asignacion),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -276,6 +300,7 @@ export const contratoRelations = relations(contrato, ({ one, many }) => ({
   lecturas: many(lectura),
   facturas: many(factura),
   cortes: many(corte),
+  asignaciones: many(asignacion),
 }));
 
 export const tarifaRelations = relations(tarifa, ({ many }) => ({
@@ -324,5 +349,16 @@ export const corteRelations = relations(corte, ({ one }) => ({
   brigadista: one(user, {
     fields: [corte.brigadistaId],
     references: [user.id],
+  }),
+}));
+
+export const asignacionRelations = relations(asignacion, ({ one }) => ({
+  brigadista: one(user, {
+    fields: [asignacion.brigadistaId],
+    references: [user.id],
+  }),
+  contrato: one(contrato, {
+    fields: [asignacion.contratoId],
+    references: [contrato.id],
   }),
 }));

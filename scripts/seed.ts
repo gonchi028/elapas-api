@@ -10,6 +10,7 @@ import {
   factura,
   pago,
   corte,
+  asignacion,
 } from '../src/db/schema';
 import { eq } from 'drizzle-orm';
 import { hash } from 'bcryptjs';
@@ -19,6 +20,7 @@ const uid = () => crypto.randomUUID();
 
 async function clean() {
   console.log('Limpiando datos existentes...');
+  await db.delete(asignacion);
   await db.delete(pago);
   await db.delete(corte);
   await db.delete(factura);
@@ -430,6 +432,34 @@ async function seedCortes(
   return [data];
 }
 
+async function seedAsignaciones(
+  contratos: (typeof contrato.$inferSelect)[],
+  users: (typeof user.$inferSelect)[],
+) {
+  console.log('Creando asignaciones...');
+  const brigadistas = users.filter((u) => u.role === 'brigadista');
+
+  const values: {
+    id: string;
+    brigadistaId: string;
+    contratoId: string;
+  }[] = [];
+
+  contratos.forEach((c, i) => {
+    const brig = brigadistas[i % brigadistas.length];
+    values.push({
+      id: uid(),
+      brigadistaId: brig.id,
+      contratoId: c.id,
+    });
+  });
+
+  const data = await db.insert(asignacion).values(values).returning();
+
+  console.log(`  ${data.length} asignaciones creadas`);
+  return data;
+}
+
 async function main() {
   console.log('🌱 Iniciando seed...\n');
 
@@ -440,6 +470,7 @@ async function main() {
   const tarifas = await seedTarifas();
   const users = await seedUsers();
   const contratos = await seedContratos(users, distritos);
+  const asignaciones = await seedAsignaciones(contratos, users);
   const lecturas = await seedLecturas(contratos, users);
   const facturas = await seedFacturas(contratos, lecturas, tarifas);
   const pagos = await seedPagos(facturas);
@@ -450,6 +481,7 @@ async function main() {
   console.log(`   ${tarifas.length} tarifas`);
   console.log(`   ${users.length} usuarios`);
   console.log(`   ${contratos.length} contratos`);
+  console.log(`   ${asignaciones.length} asignaciones`);
   console.log(`   ${lecturas.length} lecturas`);
   console.log(`   ${facturas.length} facturas`);
   console.log(`   ${pagos.length} pagos`);

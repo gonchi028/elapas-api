@@ -65,10 +65,11 @@ NestJS 11 API (TypeScript) for the **ELAPAS Water Utility Management System**. P
 | Distritos | `src/distritos/` | Admin CRUD for districts |
 | Contratos | `src/contratos/` | Contracts (citizens see mis-contratos) |
 | Tarifas | `src/tarifas/` | Tariff tier management |
-| Lecturas | `src/lecturas/` | Meter readings by brigadistas |
+| Asignaciones | `src/asignaciones/` | Admin assigns contracts to brigadistas (route management) |
+| Lecturas | `src/lecturas/` | Meter readings by brigadistas (scoped to assigned contracts) |
 | Facturas | `src/facturas/` | Invoices + massive generation |
 | Pagos | `src/pagos/` | Payments with QR simulation |
-| Cortes | `src/cortes/` | Service cuts |
+| Cortes | `src/cortes/` | Service cuts (scoped to assigned contracts) |
 | Reportes | `src/reportes/` | Dashboard reports |
 
 ## Common

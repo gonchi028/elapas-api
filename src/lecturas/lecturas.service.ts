@@ -1,7 +1,12 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { DB_PROVIDER, type Database } from '../db/connection';
-import { lectura } from '../db/schema';
-import { SQL, eq, and, sql, desc, gte, lte } from 'drizzle-orm';
+import { asignacion, contrato, distrito, lectura } from '../db/schema';
+import { SQL, eq, and, sql, desc, gte, lte, inArray } from 'drizzle-orm';
 import { CreateLecturaDto } from './dto/create-lectura.dto';
 
 @Injectable()
@@ -68,7 +73,92 @@ export class LecturasService {
       .orderBy(desc(lectura.createdAt));
   }
 
+  async findMiRuta(brigadistaId: string) {
+    const asignaciones = await this.db
+      .select({ contratoId: asignacion.contratoId })
+      .from(asignacion)
+      .where(eq(asignacion.brigadistaId, brigadistaId));
+
+    if (asignaciones.length === 0) {
+      return [];
+    }
+
+    const contratoIds = asignaciones.map((a) => a.contratoId);
+
+    const contratosWithDistrito = await this.db
+      .select({
+        contrato,
+        distrito,
+      })
+      .from(contrato)
+      .innerJoin(distrito, eq(contrato.distritoId, distrito.id))
+      .where(inArray(contrato.id, contratoIds));
+
+    const currentPeriod = this.getCurrentPeriod();
+
+    const lecturasDelPeriodo = await this.db
+      .select({ contratoId: lectura.contratoId })
+      .from(lectura)
+      .where(
+        and(
+          inArray(lectura.contratoId, contratoIds),
+          sql`to_char(${lectura.fechaLectura}, 'YYYY-MM') = ${currentPeriod}`,
+        ),
+      );
+
+    const leidoSet = new Set(lecturasDelPeriodo.map((l) => l.contratoId));
+
+    const ultimasLecturas = await this.db
+      .select({
+        contratoId: lectura.contratoId,
+        valorLectura: lectura.valorLectura,
+      })
+      .from(lectura)
+      .where(inArray(lectura.contratoId, contratoIds))
+      .orderBy(desc(lectura.fechaLectura));
+
+    const lastLecturaMap = new Map<string, number>();
+    for (const l of ultimasLecturas) {
+      if (!lastLecturaMap.has(l.contratoId)) {
+        lastLecturaMap.set(l.contratoId, l.valorLectura);
+      }
+    }
+
+    return contratosWithDistrito.map((row) => ({
+      contrato: row.contrato,
+      distrito: row.distrito,
+      estadoLectura: leidoSet.has(row.contrato.id)
+        ? ('leido' as const)
+        : ('pendiente' as const),
+      ultimaLectura: lastLecturaMap.get(row.contrato.id) ?? null,
+    }));
+  }
+
+  private getCurrentPeriod(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  }
+
   async create(brigadistaId: string, dto: CreateLecturaDto) {
+    const isAssigned = await this.db
+      .select({ id: asignacion.id })
+      .from(asignacion)
+      .where(
+        and(
+          eq(asignacion.brigadistaId, brigadistaId),
+          eq(asignacion.contratoId, dto.contratoId),
+        ),
+      )
+      .limit(1);
+
+    if (isAssigned.length === 0) {
+      throw new ForbiddenException(
+        'No tienes permiso para registrar lecturas en este contrato. El contrato no está asignado a tu ruta.',
+      );
+    }
+
     const [result] = await this.db
       .insert(lectura)
       .values({

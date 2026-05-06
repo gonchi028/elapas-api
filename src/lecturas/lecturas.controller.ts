@@ -56,9 +56,31 @@ export class LecturasController {
     return { success: true, data, pagination: { page: p, limit: l, total } };
   }
 
+  @Get('mi-ruta')
+  @Roles('brigadista')
+  @ApiOperation({
+    summary: 'Obtener la ruta del día del brigadista autenticado',
+    description:
+      'Devuelve los contratos asignados al brigadista con su estado de lectura (pendiente/leído) para el periodo actual.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de contratos asignados con estado de lectura',
+  })
+  async findMiRuta(@Req() req: any) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
+    const data = await this.lecturasService.findMiRuta(req.user.id);
+    return { success: true, data };
+  }
+
   @Get('ruta/:brigadistaId')
   @Roles('brigadista')
-  @ApiOperation({ summary: 'Obtener lecturas de un brigadista' })
+  @ApiOperation({
+    summary: '[DEPRECATED] Obtener lecturas de un brigadista',
+    description:
+      'Usar GET /api/lecturas/mi-ruta en su lugar. Este endpoint será eliminado en futuras versiones.',
+    deprecated: true,
+  })
   @ApiResponse({ status: 200, description: 'Lecturas del brigadista' })
   async findByBrigadista(@Param('brigadistaId') brigadistaId: string) {
     const data = await this.lecturasService.findByBrigadista(brigadistaId);
