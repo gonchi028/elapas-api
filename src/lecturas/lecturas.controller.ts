@@ -7,6 +7,8 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -14,12 +16,16 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiQuery,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { LecturasService } from './lecturas.service';
 import { CreateLecturaDto } from './dto/create-lectura.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { createUploadConfig } from '../common/uploads/upload.config';
 
 @ApiTags('Lecturas')
 @ApiBearerAuth()
@@ -99,11 +105,35 @@ export class LecturasController {
 
   @Post()
   @Roles('brigadista')
-  @ApiOperation({ summary: 'Registrar una nueva lectura' })
+  @ApiOperation({ summary: 'Registrar una nueva lectura con fotografía' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['contratoId', 'valorLectura'],
+      properties: {
+        contratoId: { type: 'string', description: 'ID del contrato' },
+        valorLectura: { type: 'integer', description: 'Valor de lectura (m³)' },
+        foto: {
+          type: 'string',
+          format: 'binary',
+          description: 'Fotografía del medidor (JPEG, PNG, WebP, máx 5MB)',
+        },
+        latitud: { type: 'string', description: 'Latitud GPS' },
+        longitud: { type: 'string', description: 'Longitud GPS' },
+      },
+    },
+  })
   @ApiResponse({ status: 201, description: 'Lectura registrada' })
-  async create(@Req() req: any, @Body() dto: CreateLecturaDto) {
+  @UseInterceptors(FileInterceptor('foto', createUploadConfig('lecturas')))
+  async create(
+    @Req() req: any,
+    @Body() dto: CreateLecturaDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    const fotoUrl = file ? `/uploads/lecturas/${file.filename}` : undefined;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
-    const data = await this.lecturasService.create(req.user.id, dto);
+    const data = await this.lecturasService.create(req.user.id, dto, fotoUrl);
     return { success: true, data };
   }
 }

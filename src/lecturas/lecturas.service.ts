@@ -154,7 +154,7 @@ export class LecturasService {
     return `${year}-${month}`;
   }
 
-  async create(brigadistaId: string, dto: CreateLecturaDto) {
+  async create(brigadistaId: string, dto: CreateLecturaDto, fotoUrl?: string) {
     const isAssigned = await this.db
       .select({ id: asignacion.id })
       .from(asignacion)
@@ -178,7 +178,7 @@ export class LecturasService {
         contratoId: dto.contratoId,
         brigadistaId,
         valorLectura: dto.valorLectura,
-        fotoUrl: dto.fotoUrl,
+        fotoUrl,
         latitud: dto.latitud,
         longitud: dto.longitud,
       })

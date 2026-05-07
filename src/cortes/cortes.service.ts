@@ -83,10 +83,10 @@ export class CortesService {
     dto: {
       contratoId: string;
       motivo: string;
-      fotoUrl?: string;
       latitud?: string;
       longitud?: string;
     },
+    fotoUrl?: string,
   ) {
     const [contratoFound] = await this.db
       .select()
@@ -124,7 +124,7 @@ export class CortesService {
           contratoId: dto.contratoId,
           brigadistaId,
           motivo: dto.motivo,
-          fotoUrl: dto.fotoUrl,
+          fotoUrl,
           latitud: dto.latitud,
           longitud: dto.longitud,
         })
