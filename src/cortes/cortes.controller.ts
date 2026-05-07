@@ -7,6 +7,8 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -14,12 +16,16 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiQuery,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CortesService } from './cortes.service';
 import { CreateCorteDto } from './dto/create-corte.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { createUploadConfig } from '../common/uploads/upload.config';
 
 @ApiTags('Cortes')
 @ApiBearerAuth()
@@ -30,11 +36,35 @@ export class CortesController {
 
   @Post()
   @Roles('brigadista')
-  @ApiOperation({ summary: 'Registrar un nuevo corte' })
+  @ApiOperation({ summary: 'Registrar un nuevo corte con fotografía' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['contratoId', 'motivo'],
+      properties: {
+        contratoId: { type: 'string', description: 'ID del contrato' },
+        motivo: { type: 'string', description: 'Motivo del corte' },
+        foto: {
+          type: 'string',
+          format: 'binary',
+          description: 'Fotografía de evidencia (JPEG, PNG, WebP, máx 5MB)',
+        },
+        latitud: { type: 'string', description: 'Latitud GPS' },
+        longitud: { type: 'string', description: 'Longitud GPS' },
+      },
+    },
+  })
   @ApiResponse({ status: 201, description: 'Corte registrado' })
-  async create(@Req() req: any, @Body() dto: CreateCorteDto) {
+  @UseInterceptors(FileInterceptor('foto', createUploadConfig('cortes')))
+  async create(
+    @Req() req: any,
+    @Body() dto: CreateCorteDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    const fotoUrl = file ? `/uploads/cortes/${file.filename}` : undefined;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
-    const data = await this.cortesService.create(req.user.id, dto);
+    const data = await this.cortesService.create(req.user.id, dto, fotoUrl);
     return { success: true, data };
   }
 

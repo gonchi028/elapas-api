@@ -6,6 +6,8 @@ import {
   lectura,
   tarifa,
   user,
+  predio,
+  medidor,
   distrito,
   type contratoEstadoEnum,
   type facturaEstadoEnum,
@@ -148,7 +150,9 @@ export class FacturasService {
       .from(factura)
       .innerJoin(contrato, eq(factura.contratoId, contrato.id))
       .innerJoin(user, eq(contrato.usuarioId, user.id))
-      .innerJoin(distrito, eq(contrato.distritoId, distrito.id))
+      .innerJoin(predio, eq(contrato.predioId, predio.id))
+      .innerJoin(medidor, eq(contrato.medidorId, medidor.id))
+      .innerJoin(distrito, eq(predio.distritoId, distrito.id))
       .innerJoin(lectura, eq(factura.lecturaId, lectura.id))
       .innerJoin(tarifa, eq(factura.tarifaId, tarifa.id))
       .where(eq(factura.id, id));
@@ -162,6 +166,8 @@ export class FacturasService {
       factura: row.factura,
       contrato: row.contrato,
       usuario: row.user,
+      predio: row.predio,
+      medidor: row.medidor,
       distrito: row.distrito,
       lectura: row.lectura,
       tarifa: row.tarifa,

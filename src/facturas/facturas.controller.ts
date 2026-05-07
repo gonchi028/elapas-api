@@ -38,6 +38,7 @@ export class FacturasController {
 
   @Get()
   @Roles('admin')
+  @ApiOperation({ summary: 'Listar facturas con filtros y paginación' })
   @ApiQuery({ name: 'estado', required: false })
   @ApiQuery({ name: 'periodo', required: false })
   @ApiQuery({ name: 'page', required: false })
@@ -61,6 +62,7 @@ export class FacturasController {
 
   @Get('mis-facturas')
   @Roles('ciudadano')
+  @ApiOperation({ summary: 'Listar facturas del usuario autenticado' })
   async findMisFacturas(@Req() req: any) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
     const data = await this.facturasService.findByUsuario(req.user.id);
@@ -96,6 +98,7 @@ export class FacturasController {
 
   @Get(':id')
   @Roles('admin', 'ciudadano')
+  @ApiOperation({ summary: 'Obtener una factura por ID' })
   async findOne(@Param('id') id: string) {
     const data = await this.facturasService.findOne(id);
     return { success: true, data };
@@ -103,6 +106,7 @@ export class FacturasController {
 
   @Post('generar')
   @Roles('admin')
+  @ApiOperation({ summary: 'Generar facturas masivamente para un periodo' })
   async generate(@Body() dto: GenerateFacturasDto) {
     const data = await this.facturasService.generate(
       dto.periodo,

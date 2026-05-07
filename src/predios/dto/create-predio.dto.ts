@@ -1,16 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
-export class CreateCorteDto {
-  @ApiProperty({ description: 'ID del contrato' })
+export class CreatePredioDto {
+  @ApiProperty({ description: 'ID del distrito' })
   @IsString()
   @IsNotEmpty()
-  contratoId: string;
+  distritoId: string;
 
-  @ApiProperty({ description: 'Motivo del corte' })
+  @ApiProperty({ description: 'Dirección del predio' })
   @IsString()
   @IsNotEmpty()
-  motivo: string;
+  direccion: string;
 
   @ApiPropertyOptional({ description: 'Latitud GPS' })
   @IsOptional()

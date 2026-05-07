@@ -1,7 +1,18 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { SQL, eq, and, sql, desc, gte, lte } from 'drizzle-orm';
 import { DB_PROVIDER, type Database } from '../db/connection';
-import { corte, contrato, contratoEstadoEnum } from '../db/schema';
+import {
+  asignacion,
+  corte,
+  contrato,
+  contratoEstadoEnum,
+  predio,
+} from '../db/schema';
 
 @Injectable()
 export class CortesService {
@@ -21,7 +32,7 @@ export class CortesService {
     const conditions: (SQL | undefined)[] = [];
 
     if (filters.distritoId) {
-      conditions.push(eq(contrato.distritoId, filters.distritoId));
+      conditions.push(eq(predio.distritoId, filters.distritoId));
     }
 
     if (filters.fechaInicio) {
@@ -41,6 +52,7 @@ export class CortesService {
       .select({ count: sql<number>`count(*)::int` })
       .from(corte)
       .innerJoin(contrato, eq(corte.contratoId, contrato.id))
+      .innerJoin(predio, eq(contrato.predioId, predio.id))
       .where(whereClause);
 
     const total = countResult.count;
@@ -49,6 +61,7 @@ export class CortesService {
       .select()
       .from(corte)
       .innerJoin(contrato, eq(corte.contratoId, contrato.id))
+      .innerJoin(predio, eq(contrato.predioId, predio.id))
       .where(whereClause)
       .orderBy(desc(corte.createdAt))
       .limit(limit)
@@ -70,10 +83,10 @@ export class CortesService {
     dto: {
       contratoId: string;
       motivo: string;
-      fotoUrl?: string;
       latitud?: string;
       longitud?: string;
     },
+    fotoUrl?: string,
   ) {
     const [contratoFound] = await this.db
       .select()
@@ -82,6 +95,23 @@ export class CortesService {
     if (!contratoFound) {
       throw new NotFoundException(
         `Contrato con id ${dto.contratoId} no encontrado`,
+      );
+    }
+
+    const isAssigned = await this.db
+      .select({ id: asignacion.id })
+      .from(asignacion)
+      .where(
+        and(
+          eq(asignacion.brigadistaId, brigadistaId),
+          eq(asignacion.contratoId, dto.contratoId),
+        ),
+      )
+      .limit(1);
+
+    if (isAssigned.length === 0) {
+      throw new ForbiddenException(
+        'No tienes permiso para registrar cortes en este contrato. El contrato no está asignado a tu ruta.',
       );
     }
 
@@ -94,7 +124,7 @@ export class CortesService {
           contratoId: dto.contratoId,
           brigadistaId,
           motivo: dto.motivo,
-          fotoUrl: dto.fotoUrl,
+          fotoUrl,
           latitud: dto.latitud,
           longitud: dto.longitud,
         })

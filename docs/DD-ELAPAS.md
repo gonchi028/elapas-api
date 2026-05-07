@@ -98,7 +98,8 @@ Los brigadistas no cuentan con una herramienta digital unificada para registrar 
 │                     PostgreSQL                                  │
 │                                                                 │
 │  usuarios │ contratos │ lecturas │ facturas │ pagos │ cortes    │
-│  tarifas  │ distritos │ roles    │ logs     │       │           │
+│  tarifas  │ distritos │ predios  │ medidores│ roles │ logs      │
+│  asignaciones                                                   │
 └─────────────────────────────────────────────────────────────────┘
          │
          ▼
@@ -190,7 +191,7 @@ mobile/
 | ID | User Story |
 |----|-----------|
 | US-T1 | Como brigadista, quiero iniciar sesión en la app móvil con mis credenciales para acceder a mis funciones de campo. |
-| US-T2 | Como brigadista, quiero ver la lista de medidores asignados a mi ruta del día para planificar mi recorrido. |
+| US-T2 | Como brigadista, quiero ver la lista de medidores asignados a mi ruta del día (con estado pendiente/leído) para planificar mi recorrido. |
 | US-T3 | Como brigadista, quiero registrar la lectura de un medidor ingresando el valor numérico para que el sistema calcule el consumo. |
 | US-T4 | Como brigadista, quiero que se registre automáticamente mi ubicación GPS al tomar una lectura para que quede constancia de mi presencia en el lugar. |
 | US-T5 | Como brigadista, quiero tomar una fotografía del medidor como evidencia del estado y la lectura registrada. |
@@ -253,7 +254,7 @@ mobile/
 | ID | Requisito | Criterios de Aceptación |
 |----|-----------|------------------------|
 | AM-P0-01 | Login con credenciales de brigadista | Pantalla de login que valida contra la API y almacena el JWT localmente |
-| AM-P0-02 | Lista de medidores/ruta asignada | **Given** un brigadista logueado, **When** abre la app, **Then** ve los contratos asignados con dirección y estado (pendiente/leído) |
+| AM-P0-02 | Lista de medidores/ruta asignada | **Given** un brigadista logueado, **When** abre la app, **Then** ve los contratos asignados con dirección y estado (pendiente/leído). Las asignaciones son gestionadas por el administrador a través del módulo de Asignaciones. |
 | AM-P0-03 | Formulario de registro de lectura | Input numérico para valor del medidor + captura de foto + GPS automático. Validación: lectura >= lectura anterior |
 | AM-P0-04 | Captura de fotografía con cámara del dispositivo | Usar cámara nativa vía Expo ImagePicker. La foto se sube a /api/lecturas/:id/foto |
 | AM-P0-05 | Registro de geolocalización automática | Al registrar lectura/corte, obtener coordenadas GPS y enviarlas a la API |
@@ -319,58 +320,88 @@ mobile/
 ┌──────────────┐      ┌──────────────────┐   ┌─────────────┐
 │   usuarios   │      │    contratos     │   │  distritos  │
 ├──────────────┤      ├──────────────────┤   ├─────────────┤
-│ id (PK)      │◄─┐   │ id (PK)          │──►│ id (PK)     │
+│ id (PK)      │◄─┐   │ id (PK)          │   │ id (PK)     │
 │ nombre       │  │   │ nro_contrato     │   │ nombre      │
 │ email        │  │   │ usuario_id (FK)  │──┘│ codigo      │
-│ password     │  │   │ distrito_id (FK) │   └─────────────┘
-│ rol          │  │   │ direccion        │
-│ estado       │  │   │ nro_medidor      │        ┌─────────────┐
-│ created_at   │  │   │ latitud          │        │   tarifas   │
-│ updated_at   │  │   │ longitud         │        ├─────────────┤
-└──────────────┘  │   │ estado           │        │ id (PK)     │
-                  │   │ created_at       │        │ nombre      │
-                  │   └────────┬─────────┘        │ tramo_min   │
-                  │            │                  │ tramo_max   │
-                  │            │                  │ precio_m3   │
-                  │            │                  │ cargo_fijo  │
-                  │            │                  │ estado      │
-                  │            │                  └─────────────┘
-                  │            │
-        ┌─────────┘            │
-        │                      │
-        │    ┌─────────────────┴──────────────┐
-        │    │                                │
-        ▼    ▼                                ▼
-┌───────────────┐                     ┌──────────────────┐
-│  lecturas     │                     │    facturas      │
-├───────────────┤                     ├──────────────────┤
-│ id (PK)       │                     │ id (PK)          │
-│ contrato_id   │──► contratos.id     │ contrato_id (FK) │──► contratos.id
-│ brigadista_id │──► usuarios.id      │ lectura_id (FK)  │──► lecturas.id
-│ valor_lectura │                     │ periodo          │
-│ foto_url      │                     │ consumo_m3       │
-│ latitud       │                     │ tarifa_id (FK)   │──► tarifas.id
-│ longitud      │                     │ cargo_fijo       │
-│ fecha_lectura │                     │ subtotal         │
-│ created_at    │                     │ total            │
-└───────────────┘                     │ estado           │
-                                      │ fecha_vencimiento│
-┌───────────────┐                     │ created_at       │
-│   cortes      │                     └────────┬─────────┘
-├───────────────┤                              │
-│ id (PK)       │                              │
-│ contrato_id   │──► contratos.id     ┌────────┴─────────┐
-│ brigadista_id │──► usuarios.id      │     pagos        │
-│ motivo        │                     ├──────────────────┤
-│ foto_url      │                     │ id (PK)          │
-│ latitud       │                     │ factura_id (FK)  │──► facturas.id
-│ longitud      │                     │ monto            │
-│ fecha_corte   │                     │ metodo_pago      │
-│ estado        │                     │ referencia       │
-│ created_at    │                     │ qr_data          │
-└───────────────┘                     │ fecha_pago       │
-                                      │ created_at       │
-                                      └──────────────────┘
+│ password     │  │   │ predio_id (FK)   │──►│             │
+│ rol          │  │   │ medidor_id (FK)  │──┐│             │
+│ estado       │  │   │ estado           │  │└──────┬──────┘
+│ created_at   │  │   │ created_at       │  │       │
+│ updated_at   │  │   └────────┬─────────┘  │       │
+└──────────────┘  │            │             │       │
+                  │            │             │       │
+         ┌─────────┘            │             │       │
+         │                      │             │       │
+         │    ┌─────────────────┘             │       │
+         │    │                               │       │
+         ▼    ▼                               ▼       ▼
+┌───────────────┐                     ┌──────────────┐
+│  lecturas     │                     │   predios    │
+├───────────────┤                     ├──────────────┤
+│ id (PK)       │                     │ id (PK)      │
+│ contrato_id   │──► contratos.id     │ distrito_id  │──► distritos.id
+│ brigadista_id │──► usuarios.id      │ direccion    │
+│ valor_lectura │                     │ latitud      │
+│ foto_url      │                     │ longitud     │
+│ latitud       │                     │ created_at   │
+│ longitud      │                     └──────────────┘
+│ fecha_lectura │
+│ created_at    │                     ┌──────────────┐
+└───────────────┘                     │  medidores   │
+                                      ├──────────────┤
+┌───────────────┐                     │ id (PK)      │
+│   cortes      │                     │ nro_medidor  │
+├───────────────┤                     │ contrato_id  │──► contratos.id
+│ id (PK)       │                     │ created_at   │
+│ contrato_id   │──► contratos.id     └──────────────┘
+│ brigadista_id │──► usuarios.id
+│ motivo        │                     ┌─────────────┐
+│ foto_url      │                     │  tarifas    │
+│ latitud       │                     ├─────────────┤
+│ longitud      │                     │ id (PK)     │
+│ fecha_corte   │                     │ nombre      │
+│ estado        │                     │ tramo_min   │
+│ created_at    │                     │ tramo_max   │
+└───────────────┘                     │ precio_m3   │
+                                      │ cargo_fijo  │
+┌────────────────┐                    │ estado      │
+│  asignaciones  │                    └──────┬──────┘
+├────────────────┤                           │
+│ id (PK)        │                           │
+│ brigadista_id  │──► usuarios.id            │
+│ contrato_id    │──► contratos.id           │
+│ created_at     │                           │
+└────────────────┘                           │
+  UNIQUE(brigadista_id, contrato_id)         │
+                                    ┌────────┴─────────┐
+                                    │    facturas      │
+                                    ├──────────────────┤
+                                    │ id (PK)          │
+                                    │ contrato_id (FK) │──► contratos.id
+                                    │ lectura_id (FK)  │──► lecturas.id
+                                    │ periodo          │
+                                    │ consumo_m3       │
+                                    │ tarifa_id (FK)   │──► tarifas.id
+                                    │ cargo_fijo       │
+                                    │ subtotal         │
+                                    │ total            │
+                                    │ estado           │
+                                    │ fecha_vencimiento│
+                                    │ created_at       │
+                                    └────────┬─────────┘
+                                             │
+                                    ┌────────┴─────────┐
+                                    │     pagos        │
+                                    ├──────────────────┤
+                                    │ id (PK)          │
+                                    │ factura_id (FK)  │──► facturas.id
+                                    │ monto            │
+                                    │ metodo_pago      │
+                                    │ referencia       │
+                                    │ qr_data          │
+                                    │ fecha_pago       │
+                                    │ created_at       │
+                                    └──────────────────┘
 ```
 
 ### 7.2 Definición de Entidades
@@ -400,14 +431,29 @@ mobile/
 | id | UUID | PK, auto | Identificador |
 | nro_contrato | VARCHAR(20) | UNIQUE, NOT NULL | N° visible del contrato |
 | usuario_id | UUID | FK → usuarios | Ciudadano titular |
-| distrito_id | UUID | FK → distritos | Zona de cobertura |
-| direccion | VARCHAR(255) | NOT NULL | Dirección del inmueble |
-| nro_medidor | VARCHAR(30) | UNIQUE, NOT NULL | N° del medidor instalado |
-| latitud | DECIMAL(10,7) | | Coordenada GPS |
-| longitud | DECIMAL(10,7) | | Coordenada GPS |
+| predio_id | UUID | FK → predios | Predio (inmueble) del servicio |
+| medidor_id | UUID | FK → medidores | Medidor instalado |
 | estado | ENUM('activo', 'suspendido', 'cortado') | DEFAULT 'activo' | Estado del servicio |
 | created_at | TIMESTAMP | DEFAULT NOW() | |
 | updated_at | TIMESTAMP | DEFAULT NOW() | |
+
+#### `predios`
+| Campo | Tipo | Restricciones | Descripción |
+|-------|------|---------------|-------------|
+| id | UUID | PK, auto | Identificador |
+| distrito_id | UUID | FK → distritos, NOT NULL | Zona de cobertura |
+| direccion | VARCHAR(255) | NOT NULL | Dirección del inmueble |
+| latitud | DECIMAL(10,7) | | Coordenada GPS |
+| longitud | DECIMAL(10,7) | | Coordenada GPS |
+| created_at | TIMESTAMP | DEFAULT NOW() | |
+
+#### `medidores`
+| Campo | Tipo | Restricciones | Descripción |
+|-------|------|---------------|-------------|
+| id | UUID | PK, auto | Identificador |
+| nro_medidor | VARCHAR(30) | UNIQUE, NOT NULL | N° del medidor |
+| contrato_id | UUID | FK → contratos, NOT NULL | Contrato vinculado |
+| created_at | TIMESTAMP | DEFAULT NOW() | |
 
 #### `tarifas`
 | Campo | Tipo | Restricciones | Descripción |
@@ -475,6 +521,15 @@ mobile/
 | estado | ENUM('efectuado', 'reconectado') | DEFAULT 'efectuado' | Estado del corte |
 | created_at | TIMESTAMP | DEFAULT NOW() | |
 
+#### `asignaciones`
+| Campo | Tipo | Restricciones | Descripción |
+|-------|------|---------------|-------------|
+| id | UUID | PK, auto | Identificador |
+| brigadista_id | UUID | FK → usuarios, NOT NULL | Brigadista asignado |
+| contrato_id | UUID | FK → contratos, NOT NULL | Contrato asignado |
+| created_at | TIMESTAMP | DEFAULT NOW() | Fecha de asignación |
+| | | UNIQUE(brigadista_id, contrato_id) | No se permite duplicar asignaciones |
+
 ---
 
 ## 8. API Design
@@ -497,7 +552,27 @@ mobile/
 | PUT | `/api/usuarios/:id` | Actualizar usuario | Admin |
 | DELETE | `/api/usuarios/:id` | Desactivar usuario | Admin |
 
-### 8.3 Contratos / Catastro
+### 8.3 Predios (Admin)
+
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/predios` | Listar predios (filtrable por distrito, paginado) | Admin |
+| GET | `/api/predios/:id` | Detalle de predio | Admin |
+| POST | `/api/predios` | Crear predio | Admin |
+| PUT | `/api/predios/:id` | Actualizar predio | Admin |
+| DELETE | `/api/predios/:id` | Eliminar predio (solo si no tiene contratos) | Admin |
+
+### 8.4 Medidores (Admin)
+
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/medidores` | Listar medidores (paginado) | Admin |
+| GET | `/api/medidores/:id` | Detalle de medidor | Admin |
+| POST | `/api/medidores` | Crear medidor | Admin |
+| PUT | `/api/medidores/:id` | Actualizar medidor | Admin |
+| DELETE | `/api/medidores/:id` | Eliminar medidor (solo si no está en un contrato) | Admin |
+
+### 8.5 Contratos / Catastro
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
@@ -507,16 +582,19 @@ mobile/
 | POST | `/api/contratos` | Crear contrato | Admin |
 | PUT | `/api/contratos/:id` | Actualizar contrato | Admin |
 
-### 8.4 Lecturas
+### 8.6 Lecturas
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
 | GET | `/api/lecturas` | Listar lecturas (filtrable por fecha, brigadista) | Admin |
 | GET | `/api/lecturas/:id` | Detalle de lectura | Admin, Brigadista |
-| POST | `/api/lecturas` | Registrar lectura + foto + GPS | Brigadista |
-| GET | `/api/lecturas/ruta/:brigadista_id` | Ruta/contratos asignados al brigadista | Brigadista |
+| POST | `/api/lecturas` | Registrar lectura + foto (multipart/form-data) + GPS | Brigadista (solo contratos asignados) |
+| GET | `/api/lecturas/mi-ruta` | Ruta del día: contratos asignados con estado pendiente/leído | Brigadista |
+| GET | `/api/lecturas/ruta/:brigadista_id` | ~~Ruta/contratos asignados al brigadista~~ (DEPRECATED) | Brigadista |
 
-### 8.5 Tarifas
+> **Subida de fotos:** El endpoint `POST /api/lecturas` acepta `multipart/form-data` con un campo `foto` (archivo JPEG/PNG/WebP, máx 5MB). La imagen se almacena en `uploads/lecturas/` y el campo `fotoUrl` de la lectura se establece con la ruta relativa `/uploads/lecturas/<filename>`. Las imágenes son accesibles vía `GET /uploads/lecturas/<filename>`.
+
+### 8.7 Tarifas
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
@@ -524,7 +602,7 @@ mobile/
 | POST | `/api/tarifas` | Crear tarifa | Admin |
 | PUT | `/api/tarifas/:id` | Actualizar tarifa | Admin |
 
-### 8.6 Facturación
+### 8.8 Facturación
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
@@ -534,7 +612,7 @@ mobile/
 | GET | `/api/facturas/:id/pdf` | Descargar factura en PDF | Admin, Dueño |
 | POST | `/api/facturas/generar` | Generar facturas masivas para un período | Admin |
 
-### 8.7 Pagos
+### 8.9 Pagos
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
@@ -543,15 +621,29 @@ mobile/
 | GET | `/api/pagos` | Historial de pagos | Admin |
 | GET | `/api/pagos/mis-pagos` | Pagos del ciudadano | Ciudadano |
 
-### 8.8 Cortes
+### 8.10 Cortes
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
-| POST | `/api/cortes` | Registrar corte de servicio | Brigadista |
+| POST | `/api/cortes` | Registrar corte + foto (multipart/form-data) | Brigadista |
 | GET | `/api/cortes` | Listar cortes (filtrable por distrito, fecha) | Admin |
 | GET | `/api/cortes/:id` | Detalle de corte | Admin |
 
-### 8.9 Reportes / Dashboard
+> **Subida de fotos:** El endpoint `POST /api/cortes` acepta `multipart/form-data` con un campo `foto` (archivo JPEG/PNG/WebP, máx 5MB). La imagen se almacena en `uploads/cortes/` y el campo `fotoUrl` se establece con `/uploads/cortes/<filename>`.
+
+### 8.11 Asignaciones de Ruta
+
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/asignaciones` | Listar todas las asignaciones (filtrable por brigadistaId, paginado) | Admin |
+| GET | `/api/asignaciones/brigadista/:brigadistaId` | Obtener contratos asignados a un brigadista | Admin |
+| POST | `/api/asignaciones` | Asignar contratos a un brigadista (array de contratoIds) | Admin |
+| PUT | `/api/asignaciones/:brigadistaId` | Reemplazar todas las asignaciones de un brigadista | Admin |
+| DELETE | `/api/asignaciones/:id` | Eliminar una asignación individual | Admin |
+
+> **Regla de autorización:** Los brigadistas solo pueden registrar lecturas y cortes en contratos que les hayan sido asignados. Intentar operar en un contrato no asignado devuelve 403 Forbidden.
+
+### 8.12 Reportes / Dashboard
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
@@ -560,7 +652,7 @@ mobile/
 | GET | `/api/reportes/cortes-por-distrito` | Cortes agrupados por distrito | Admin |
 | GET | `/api/reportes/lecturas-por-brigadista` | Lecturas por brigadista en rango de fechas | Admin |
 
-### 8.10 Formato de Respuesta Estándar
+### 8.13 Formato de Respuesta Estándar
 
 ```json
 {
@@ -576,7 +668,7 @@ mobile/
 }
 ```
 
-### 8.11 Códigos de Error
+### 8.14 Códigos de Error
 
 | Código | Significado | Uso |
 |--------|------------|-----|
@@ -596,7 +688,7 @@ mobile/
 | # | Pantalla | Elementos principales |
 |---|----------|----------------------|
 | 1 | Login | Logo ELAPAS, campos email/password, botón "Ingresar" |
-| 2 | Home (Ruta del día) | Lista de contratos asignados, badge de estado (pendiente/leído), contador superior |
+| 2 | Home (Ruta del día) | Lista de contratos asignados (desde módulo de Asignaciones), badge de estado (pendiente/leído), contador superior, última lectura de referencia |
 | 3 | Registrar Lectura | Header con datos del contrato, input numérico, botón "Tomar foto", mapa con GPS, botón "Guardar lectura" |
 | 4 | Registrar Corte | Selector de contrato, campo motivo, botón "Tomar foto", GPS automático, botón "Registrar corte" |
 | 5 | Resumen del Día | Cards: lecturas realizadas, cortes realizados, botón "Cerrar jornada" |
@@ -629,7 +721,7 @@ CIUDADANO:
 Login → Dashboard → Historial | Facturas → Pagar (QR)
 
 BRIGADISTA (App):
-Login → Ruta del Día → Registrar Lectura | Registrar Corte → Resumen
+Login → Ruta del Día (GET /api/lecturas/mi-ruta) → Registrar Lectura | Registrar Corte → Resumen
 
 ADMIN:
 Login → Overview → Lecturas | Cortes | Recaudación | Usuarios | Tarifas

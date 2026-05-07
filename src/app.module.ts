@@ -11,6 +11,9 @@ import { FacturasModule } from './facturas/facturas.module';
 import { PagosModule } from './pagos/pagos.module';
 import { CortesModule } from './cortes/cortes.module';
 import { ReportesModule } from './reportes/reportes.module';
+import { AsignacionesModule } from './asignaciones/asignaciones.module';
+import { PrediosModule } from './predios/predios.module';
+import { MedidoresModule } from './medidores/medidores.module';
 
 @Module({
   imports: [
@@ -18,6 +21,8 @@ import { ReportesModule } from './reportes/reportes.module';
     AuthModule,
     UsuariosModule,
     DistritosModule,
+    PrediosModule,
+    MedidoresModule,
     ContratosModule,
     TarifasModule,
     LecturasModule,
@@ -25,6 +30,7 @@ import { ReportesModule } from './reportes/reportes.module';
     PagosModule,
     CortesModule,
     ReportesModule,
+    AsignacionesModule,
   ],
   controllers: [AppController],
   providers: [],
