@@ -84,6 +84,7 @@ http://localhost:3000/docs-json
 src/
 ├── main.ts                  # Entry point, Swagger, global prefix
 ├── app.module.ts            # Módulo raíz
+├── common/                  # Filtros, PDF, uploads (código compartido)
 ├── db/
 │   ├── connection.ts        # Conexión Drizzle + DI provider
 │   ├── db.module.ts         # DbModule global (inyecta la BD)
@@ -98,8 +99,11 @@ src/
 │   └── dto/                 # DTOs de auth
 ├── usuarios/                # CRUD de usuarios (admin)
 ├── distritos/               # CRUD de distritos (admin)
+├── predios/                 # CRUD de predios (admin)
+├── medidores/               # CRUD de medidores (admin)
 ├── contratos/               # Gestión de contratos/catastro
 ├── tarifas/                 # Pliego tarifario
+├── asignaciones/            # Asignación de contratos a brigadistas
 ├── lecturas/                # Registro de lecturas de medidores
 ├── facturas/                # Generación masiva de facturas
 ├── pagos/                   # Pagos y generación de QR
@@ -148,6 +152,26 @@ Better Auth gestiona la autenticación con email y contraseña. Todos los endpoi
 | PUT | `/api/distritos/:id` | admin |
 | DELETE | `/api/distritos/:id` | admin |
 
+### Predios (`/api/predios`)
+
+| Método | Endpoint | Roles |
+|--------|----------|-------|
+| GET | `/api/predios` | admin |
+| GET | `/api/predios/:id` | admin |
+| POST | `/api/predios` | admin |
+| PUT | `/api/predios/:id` | admin |
+| DELETE | `/api/predios/:id` | admin |
+
+### Medidores (`/api/medidores`)
+
+| Método | Endpoint | Roles |
+|--------|----------|-------|
+| GET | `/api/medidores` | admin |
+| GET | `/api/medidores/:id` | admin |
+| POST | `/api/medidores` | admin |
+| PUT | `/api/medidores/:id` | admin |
+| DELETE | `/api/medidores/:id` | admin |
+
 ### Contratos (`/api/contratos`)
 
 | Método | Endpoint | Roles |
@@ -163,15 +187,26 @@ Better Auth gestiona la autenticación con email y contraseña. Todos los endpoi
 | Método | Endpoint | Roles |
 |--------|----------|-------|
 | GET | `/api/tarifas` | admin, brigadista |
+| GET | `/api/tarifas/:id` | admin, brigadista |
 | POST | `/api/tarifas` | admin |
 | PUT | `/api/tarifas/:id` | admin |
+
+### Asignaciones (`/api/asignaciones`)
+
+| Método | Endpoint | Roles |
+|--------|----------|-------|
+| GET | `/api/asignaciones` | admin |
+| GET | `/api/asignaciones/brigadista/:brigadistaId` | admin, brigadista |
+| POST | `/api/asignaciones` | admin |
+| PUT | `/api/asignaciones/:brigadistaId` | admin |
+| DELETE | `/api/asignaciones/:id` | admin |
 
 ### Lecturas (`/api/lecturas`)
 
 | Método | Endpoint | Roles |
 |--------|----------|-------|
 | GET | `/api/lecturas` | admin |
-| GET | `/api/lecturas/ruta/:brigadistaId` | brigadista |
+| GET | `/api/lecturas/mi-ruta` | brigadista |
 | GET | `/api/lecturas/:id` | admin, brigadista |
 | POST | `/api/lecturas` | brigadista |
 
@@ -182,6 +217,7 @@ Better Auth gestiona la autenticación con email y contraseña. Todos los endpoi
 | GET | `/api/facturas` | admin |
 | GET | `/api/facturas/mis-facturas` | ciudadano |
 | GET | `/api/facturas/:id` | admin, ciudadano |
+| GET | `/api/facturas/:id/pdf` | admin, ciudadano |
 | POST | `/api/facturas/generar` | admin |
 
 ### Pagos (`/api/pagos`)
@@ -224,7 +260,7 @@ user ──1:N── contrato ──1:N── lectura
 tarifa ──1:N── factura
 ```
 
-Tablas principales: `user`, `session`, `account`, `verification`, `distrito`, `contrato`, `tarifa`, `lectura`, `factura`, `pago`, `corte`.
+Tablas principales: `user`, `session`, `account`, `verification`, `distrito`, `predio`, `medidor`, `contrato`, `tarifa`, `asignacion`, `lectura`, `factura`, `pago`, `corte`.
 
 ## Formato de respuesta
 

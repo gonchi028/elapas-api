@@ -113,14 +113,14 @@ Los brigadistas no cuentan con una herramienta digital unificada para registrar 
 
 | Capa | Tecnología | Versión | Justificación |
 |------|-----------|---------|---------------|
-| API Backend | Node.js + Express | 18+ LTS | Ecosistema JS unificado, rápido desarrollo |
+| API Backend | NestJS 11 (Express) | 11 | Framework modular con decoradores, inyección de dependencias, Swagger integrado |
 | Base de datos | PostgreSQL | 15+ | Relacional, robusta, soporte GIS con PostGIS opcional |
-| ORM | Sequelize | 6.x | ORM maduro para Node.js, migraciones incluidas |
+| ORM | Drizzle ORM | — | ORM type-safe con inferencia de tipos TypeScript, migraciones con drizzle-kit |
 | Portal Web (Frontend) | React + Vite | React 18 | SPA rápida, ecosistema amplio |
 | Dashboard Admin | React + Recharts | — | Componentes de gráficos listos para usar |
 | App Móvil | React Native + Expo | SDK 50+ | Multiplataforma (Android/iOS) con un solo código |
-| Autenticación | JWT (JSON Web Tokens) | — | Stateless, sin servidor de sesiones |
-| Almacenamiento archivos | Multer (local) | — | Upload de fotos a filesystem local |
+| Autenticación | Better Auth (sesiones con cookies) | — | Autenticación con sesiones HTTP-only cookies, roles y gestión de usuarios |
+| Almacenamiento archivos | Multer + FileInterceptor (NestJS) | — | Subida de fotos con validación de tipo y tamaño |
 | Estilos (Web) | Tailwind CSS | 3.x | Utilidades rápidas, prototipado veloz |
 | Pasarela de pago | QR Simple (simulación) | — | Demo con generación de QR estático |
 
@@ -128,26 +128,41 @@ Los brigadistas no cuentan con una herramienta digital unificada para registrar 
 
 1. **API-First:** Toda la lógica de negocio reside en la API REST. Los clientes (web, móvil, dashboard) son consumidores puros.
 2. **Separación de responsabilidades:** Cada módulo tiene sus propias rutas, controladores, servicios y modelos.
-3. **Stateless:** La API no mantiene estado de sesión; toda autenticación vía JWT.
+3. **Stateful sessions:** La autenticación se gestiona con sesiones HTTP-only cookies a través de Better Auth. Las cookies se envían automáticamente con cada petición.
 4. **Convención sobre configuración:** Estructura de proyecto estandarizada para que el equipo trabaje en paralelo.
 
 ### 4.4 Estructura de Directorios del Backend
 
 ```
-server/
-├── src/
-│   ├── config/           # Configuración (DB, JWT, puertos)
-│   ├── models/           # Modelos Sequelize (usuarios, contratos, lecturas...)
-│   ├── routes/           # Definición de rutas REST
-│   ├── controllers/      # Lógica de entrada/salida HTTP
-│   ├── services/         # Lógica de negocio
-│   ├── middlewares/      # Auth, validación, manejo de errores
-│   ├── utils/            # Helpers (cálculo tarifario, generador QR)
-│   └── app.js            # Entry point Express
-├── uploads/              # Fotos de campo (lecturas/cortes)
-├── migrations/           # Migraciones de base de datos
-├── seeders/              # Datos iniciales (tarifas, distritos)
-└── package.json
+src/
+├── main.ts                # Entry point NestJS
+├── app.module.ts          # Root module
+├── auth/                  # Better Auth + guards + decorators
+│   ├── auth.ts
+│   ├── auth.module.ts
+│   ├── auth.controller.ts
+│   ├── auth.guard.ts
+│   ├── roles.guard.ts
+│   └── dto/
+├── common/                # Shared utilities
+│   ├── filters/           # Exception filters
+│   ├── pdf/               # PDF generation service
+│   └── uploads/           # Multer upload config
+├── db/                    # Drizzle ORM connection + schema
+│   ├── connection.ts
+│   └── schema.ts
+├── usuarios/              # Admin CRUD users
+├── distritos/             # Admin CRUD districts
+├── predios/               # Admin CRUD properties
+├── medidores/             # Admin CRUD meters
+├── contratos/             # Service contracts
+├── tarifas/               # Tariff management
+├── asignaciones/          # Route assignments
+├── lecturas/              # Meter readings + mi-ruta
+├── facturas/              # Invoices + massive generation + PDF
+├── pagos/                 # Payments with QR
+├── cortes/                # Service cuts
+└── reportes/              # Dashboard reports
 ```
 
 ### 4.5 Estructura de Directorios del Frontend (Portal + Dashboard)
@@ -409,14 +424,26 @@ mobile/
 #### `usuarios`
 | Campo | Tipo | Restricciones | Descripción |
 |-------|------|---------------|-------------|
-| id | UUID | PK, auto | Identificador único |
-| nombre | VARCHAR(150) | NOT NULL | Nombre completo |
-| email | VARCHAR(150) | UNIQUE, NOT NULL | Email para login |
-| password | VARCHAR(255) | NOT NULL | Hash bcrypt |
-| rol | ENUM('admin', 'brigadista', 'ciudadano') | NOT NULL, DEFAULT 'ciudadano' | Rol del usuario |
-| estado | BOOLEAN | DEFAULT true | Activo/inactivo |
-| created_at | TIMESTAMP | DEFAULT NOW() | Fecha de creación |
-| updated_at | TIMESTAMP | DEFAULT NOW() | Última actualización |
+| id | text | PK | Identificador único |
+| name | text | NOT NULL | Nombre completo |
+| email | text | UNIQUE, NOT NULL | Email para login |
+| role | ENUM('admin', 'brigadista', 'ciudadano') | DEFAULT 'ciudadano' | Rol del usuario |
+| emailVerified | boolean | DEFAULT false | Email verificado |
+| image | text | | Foto de perfil |
+| estado | boolean | DEFAULT true | Activo/inactivo |
+| createdAt | timestamp | DEFAULT NOW() | Fecha de creación |
+| updatedAt | timestamp | DEFAULT NOW() | Última actualización |
+
+#### `account` (Better Auth)
+| Campo | Tipo | Restricciones | Descripción |
+|-------|------|---------------|-------------|
+| id | text | PK | Identificador |
+| accountId | text | NOT NULL | Email del usuario |
+| providerId | text | NOT NULL | Proveedor ('credential') |
+| userId | text | FK → user | Usuario dueño |
+| password | text | | Hash bcrypt |
+| createdAt | timestamp | DEFAULT NOW() | |
+| updatedAt | timestamp | | |
 
 #### `distritos`
 | Campo | Tipo | Restricciones | Descripción |
@@ -538,9 +565,12 @@ mobile/
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
-| POST | `/api/auth/login` | Login (email + password) → JWT | Pública |
-| POST | `/api/auth/register` | Registro de ciudadano | Pública |
-| GET | `/api/auth/me` | Datos del usuario autenticado | JWT |
+| POST | `/api/auth/sign-up/email` | Registro de ciudadano | Pública |
+| POST | `/api/auth/sign-in/email` | Login (email + password) → cookie de sesión | Pública |
+| POST | `/api/auth/sign-out` | Cerrar sesión | Cookie de sesión |
+| GET | `/api/auth/get-session` | Datos de la sesión actual | Cookie de sesión |
+
+> **Nota:** La autenticación usa cookies HTTP-only gestionadas por Better Auth. No se usa JWT.
 
 ### 8.2 Usuarios (Admin)
 
@@ -658,12 +688,10 @@ mobile/
 {
   "success": true,
   "data": { ... },
-  "message": "Operación exitosa",
   "pagination": {
     "page": 1,
     "limit": 20,
-    "total": 150,
-    "totalPages": 8
+    "total": 150
   }
 }
 ```
@@ -673,7 +701,7 @@ mobile/
 | Código | Significado | Uso |
 |--------|------------|-----|
 | 400 | Bad Request | Datos de entrada inválidos |
-| 401 | Unauthorized | Token JWT ausente o inválido |
+| 401 | Unauthorized | Cookie de sesión ausente o inválida |
 | 403 | Forbidden | Sin permisos para el recurso |
 | 404 | Not Found | Recurso no encontrado |
 | 409 | Conflict | Dato duplicado (email, contrato) |
