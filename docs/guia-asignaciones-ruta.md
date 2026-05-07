@@ -72,26 +72,42 @@ Authorization: Cookie de sesion del brigadista
       "contrato": {
         "id": "uuid-contrato",
         "nroContrato": "CNT-001",
-        "direccion": "Calle Sucre #123",
-        "nroMedidor": "MED-0001",
-        "latitud": "-19.0461000",
-        "longitud": "-65.2595000",
-        "estado": "activo"
+        "usuarioId": "uuid-usuario",
+        "predioId": "uuid-predio",
+        "medidorId": "uuid-medidor",
+        "estado": "activo",
+        "createdAt": "2026-05-06T10:00:00.000Z",
+        "updatedAt": "2026-05-06T10:00:00.000Z"
       },
       "distrito": {
         "id": "uuid-distrito",
         "nombre": "Distrito 1 - Central",
         "codigo": "D1"
       },
+      "predio": {
+        "id": "uuid-predio",
+        "distritoId": "uuid-distrito",
+        "direccion": "Calle Sucre #123",
+        "latitud": "-19.0461000",
+        "longitud": "-65.2595000",
+        "createdAt": "2026-05-06T10:00:00.000Z"
+      },
+      "medidor": {
+        "id": "uuid-medidor",
+        "nroMedidor": "MED-0001",
+        "contratoId": "uuid-contrato",
+        "createdAt": "2026-05-06T10:00:00.000Z"
+      },
       "estadoLectura": "pendiente",
       "ultimaLectura": 1213
-    },
-    ...
+    }
   ]
 }
 ```
 
 **Campos clave:**
+- `predio`: datos del inmueble (direccion, latitud, longitud) — antes estaban en linea en el contrato.
+- `medidor`: datos del medidor (nroMedidor) — antes estaba en linea en el contrato.
 - `estadoLectura`: `"pendiente"` o `"leido"` — indica si ya existe una lectura para el periodo actual (mes en curso).
 - `ultimaLectura`: el valor de la ultima lectura registrada en ese contrato (util como referencia para el brigadista). Puede ser `null` si nunca se ha leido.
 
@@ -99,17 +115,18 @@ Authorization: Cookie de sesion del brigadista
 
 ```
 POST /api/lecturas
+Content-Type: multipart/form-data
 Authorization: Cookie de sesion del brigadista
 ```
 
-```json
-{
-  "contratoId": "uuid-contrato-asignado",
-  "valorLectura": 1250,
-  "fotoUrl": "https://...",
-  "latitud": "-19.0462000",
-  "longitud": "-65.2596000"
-}
+```bash
+curl -X POST http://localhost:3000/api/lecturas \
+  -b cookies.txt \
+  -F "contratoId=uuid-contrato-asignado" \
+  -F "valorLectura=1250" \
+  -F "latitud=-19.0462000" \
+  -F "longitud=-65.2596000" \
+  -F "foto=@/path/to/foto.jpg"
 ```
 
 - El `brigadistaId` se toma automaticamente de la sesion (`req.user.id`).
@@ -128,17 +145,16 @@ Authorization: Cookie de sesion del brigadista
 
 ```
 POST /api/cortes
+Content-Type: multipart/form-data
 Authorization: Cookie de sesion del brigadista
 ```
 
-```json
-{
-  "contratoId": "uuid-contrato-asignado",
-  "motivo": "Morosidad - 3 meses sin pago",
-  "fotoUrl": "https://...",
-  "latitud": "-19.0462000",
-  "longitud": "-65.2596000"
-}
+```bash
+curl -X POST http://localhost:3000/api/cortes \
+  -b cookies.txt \
+  -F "contratoId=uuid-contrato-asignado" \
+  -F "motivo=Morosidad - 3 meses sin pago" \
+  -F "foto=@/path/to/foto.jpg"
 ```
 
 - Misma validacion de asignacion que las lecturas. Solo se pueden registrar cortes en contratos asignados.
@@ -236,16 +252,17 @@ const { data } = await response.json();
 ### Paso 3: Registrar lectura
 
 ```typescript
+const formData = new FormData();
+formData.append('contratoId', contrato.id);
+formData.append('valorLectura', '1250');
+formData.append('latitud', '-19.0462000');
+formData.append('longitud', '-65.2596000');
+formData.append('foto', fotoFile); // File o Blob, no un string URL
+
 const response = await fetch('http://localhost:3000/api/lecturas', {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
   credentials: 'include',
-  body: JSON.stringify({
-    contratoId: contrato.id,
-    valorLectura: 1250,
-    latitud: '-19.0462000',
-    longitud: '-65.2596000',
-  }),
+  body: formData,
 });
 
 if (!response.ok) {
@@ -255,7 +272,22 @@ if (!response.ok) {
 }
 ```
 
-### Paso 4: Administrador asigna contratos
+### Paso 4: Registrar corte
+
+```typescript
+const formData = new FormData();
+formData.append('contratoId', contrato.id);
+formData.append('motivo', 'Morosidad - 3 meses sin pago');
+formData.append('foto', fotoFile); // File o Blob, no un string URL
+
+const response = await fetch('http://localhost:3000/api/cortes', {
+  method: 'POST',
+  credentials: 'include',
+  body: formData,
+});
+```
+
+### Paso 5: Administrador asigna contratos
 
 ```typescript
 const response = await fetch('http://localhost:3000/api/asignaciones', {

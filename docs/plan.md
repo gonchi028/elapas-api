@@ -347,8 +347,9 @@ Run in this order after implementation:
 
 ## Key Gotchas
 
-- **Body parsing order:** Better Auth's Node handler needs to consume the raw request body. Disable NestJS's default body parser and re-add it globally.
+- **Body parsing:** NestJS body parser is enabled by default. Better Auth's Node handler works alongside it. JSON limit is set to 10MB via `app.use(json({ limit: '10mb' }))`.
 - **Route pattern:** The `@All()` decorator with a wildcard catches all HTTP methods on `/api/auth/*`.
 - **Schema generation:** Run `npx @better-auth/cli generate` to get the exact Drizzle schema Better Auth expects — don't guess the columns.
 - **CORS:** If the frontend is on a different origin, configure CORS in `main.ts` and set `BETTER_AUTH_URL` to the API's actual URL.
 - **Cookies:** Better Auth uses cookies for session tokens by default. Ensure your frontend sends credentials (`withCredentials` in Axios, or `credentials: 'include'` in fetch).
+- **File uploads:** Lecturas and cortes use `multipart/form-data` with multer. The JSON body parser only handles `application/json` requests, so multipart is processed by the FileInterceptor.

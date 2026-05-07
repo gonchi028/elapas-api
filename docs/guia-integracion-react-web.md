@@ -96,7 +96,8 @@ async function registrar(data: {
 
 ```json
 {
-  "token": "abc123...",
+  "redirect": false,
+  "token": "session-token-value",
   "user": {
     "id": "uuid",
     "name": "Juan Pérez",
@@ -104,6 +105,8 @@ async function registrar(data: {
   }
 }
 ```
+
+> **Nota:** La respuesta incluye `token` y `user`, pero la sesión se gestiona automáticamente mediante cookies HTTP (no necesitas almacenar el token manualmente). Con `withCredentials: true` en axios, la cookie `better-auth.session_token` se envía en cada request.
 
 ### 2.2 Inicio de Sesión
 
@@ -334,6 +337,8 @@ const listarContratos = (filtros?: {
 }) => api.get('/contratos', { params: filtros });
 
 // Ciudadano — mis contratos
+// La respuesta incluye los objetos `predio` y `medidor` relacionados:
+// { contrato: {...}, predio: { direccion, latitud, longitud }, medidor: { nroMedidor } }
 const misContratos = () => api.get('/contratos/mis-contratos');
 
 // Todos los roles — detalle
@@ -368,17 +373,26 @@ const listarLecturas = (filtros?: {
 }) => api.get('/lecturas', { params: filtros });
 
 // Brigadista — su ruta
-const lecturasRuta = (brigadistaId: string) =>
-  api.get(`/lecturas/ruta/${brigadistaId}`);
+const lecturasRuta = () => api.get('/lecturas/mi-ruta');
 
-// Brigadista — registrar lectura
-const registrarLectura = (data: {
-  contratoId: string;
-  valorLectura: number;
-  fotoUrl?: string;
-  latitud?: string;
-  longitud?: string;
-}) => api.post('/lecturas', data);
+  // Brigadista — registrar lectura (multipart/form-data con foto)
+  const registrarLectura = (data: {
+    contratoId: string;
+    valorLectura: number;
+    foto?: File;
+    latitud?: string;
+    longitud?: string;
+  }) => {
+    const formData = new FormData();
+    formData.append('contratoId', data.contratoId);
+    formData.append('valorLectura', data.valorLectura.toString());
+    if (data.latitud) formData.append('latitud', data.latitud);
+    if (data.longitud) formData.append('longitud', data.longitud);
+    if (data.foto) formData.append('foto', data.foto);
+    return api.post('/lecturas', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  };
 ```
 
 #### Facturas
@@ -399,7 +413,13 @@ const generarFacturas = (data: {
   periodo: string;
   fechaVencimiento: string;
 }) => api.post('/facturas/generar', data);
+
+// Todos los roles — descargar PDF de una factura
+const descargarPdfFactura = (id: string) =>
+  api.get(`/facturas/${id}/pdf`, { responseType: 'blob' });
 ```
+
+> **PDF:** El endpoint `GET /api/facturas/:id/pdf` devuelve el PDF binario con header `Content-Disposition: inline`. Usar `responseType: 'blob'` en axios para manejar la respuesta. Para mostrarlo en el navegador, se puede crear una URL con `URL.createObjectURL(blob)` o abrirlo directamente en un `<iframe>`.
 
 #### Pagos
 
@@ -427,14 +447,24 @@ const listarPagos = (page = 1) =>
 #### Cortes
 
 ```typescript
-// Brigadista — registrar corte
-const registrarCorte = (data: {
-  contratoId: string;
-  motivo: string;
-  fotoUrl?: string;
-  latitud?: string;
-  longitud?: string;
-}) => api.post('/cortes', data);
+  // Brigadista — registrar corte (multipart/form-data con foto)
+  const registrarCorte = (data: {
+    contratoId: string;
+    motivo: string;
+    foto?: File;
+    latitud?: string;
+    longitud?: string;
+  }) => {
+    const formData = new FormData();
+    formData.append('contratoId', data.contratoId);
+    formData.append('motivo', data.motivo);
+    if (data.latitud) formData.append('latitud', data.latitud);
+    if (data.longitud) formData.append('longitud', data.longitud);
+    if (data.foto) formData.append('foto', data.foto);
+    return api.post('/cortes', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  };
 
 // Admin — listar con filtros
 const listarCortes = (filtros?: {
@@ -538,8 +568,10 @@ app.enableCors({
 
 ## 7. Notas Importantes
 
-1. **Sesiones por cookies** — La autenticación no usa tokens JWT en headers. Better Auth gestiona la sesión mediante cookies que se envían automáticamente con `withCredentials: true`.
+1. **Sesiones por cookies** — La autenticación no usa tokens JWT en headers. Better Auth gestiona la sesión mediante cookies que se envían automáticamente con `withCredentials: true`. La respuesta de sign-in incluye `{ redirect, token, user }` pero no necesitas manejar el token manualmente en web.
 2. **Validación** — La API usa `ValidationPipe` con `whitelist: true`. Cualquier campo extra en el body será rechazado con error 400.
 3. **Prefijo global** — Todas las rutas (excepto `/` health check) empiezan con `/api/`.
 4. **Fechas** — Los campos de fecha usan formato ISO 8601 (`2026-04-19T00:00:00.000Z`).
 5. **Paginación** — Los endpoints de listado aceptan `page` y `limit` como query params.
+6. **Subida de fotos** — Los endpoints de lecturas y cortes usan `multipart/form-data`. El campo `foto` es un archivo (File/Blob), no un string URL.
+7. **Objetos relacionados** — Los endpoints `mis-contratos` y `mi-ruta` devuelven `predio` y `medidor` como objetos separados, no embebidos en el contrato. La dirección y coordenadas están en `predio`.
