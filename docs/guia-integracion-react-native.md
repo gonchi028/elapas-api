@@ -81,12 +81,14 @@ export default api;
 
 ### 2.1 Flujo de Sesión en React Native
 
-A diferencia de una web app, en React Native:
+A diferencia de una web app, en React Native las cookies no se gestionan automáticamente:
 
-1. Al registrarse o iniciar sesión, la API devuelve un objeto `{ token, user }`.
+1. Al registrarse o iniciar sesión, Better Auth devuelve la sesión en dos formas:
+   - En el body de la respuesta: `{ redirect, token, user }` — el `token` se extrae para almacenarlo.
+   - Como cookie HTTP `set-cookie: better-auth.session_token=...` — en el navegador funciona automáticamente, pero en React Native hay que manejarlo manualmente.
 2. El `token` debe guardarse en `AsyncStorage`.
-3. En cada petición posterior, se envía el token mediante el header `Cookie`.
-4. Para cerrar sesión, se elimina el token de `AsyncStorage`.
+3. En cada petición posterior, se envía el token mediante el header `Cookie: better-auth.session_token=<token>`.
+4. Para cerrar sesión, se llama al endpoint de sign-out y se elimina el token de `AsyncStorage`.
 
 ### 2.2 Registro
 
@@ -123,7 +125,8 @@ async function registrar(data: {
 
 ```json
 {
-  "token": "abc123...",
+  "redirect": false,
+  "token": "session-token-value",
   "user": {
     "id": "uuid",
     "name": "Juan Pérez",
@@ -132,6 +135,8 @@ async function registrar(data: {
   }
 }
 ```
+
+> **Nota:** El `token` viene en el body de la respuesta para que React Native pueda extraerlo. En el navegador, la sesión se gestiona automáticamente vía cookies HTTP.
 
 ### 2.3 Inicio de Sesión
 
@@ -325,18 +330,33 @@ const obtenerContrato = (id: string) => api.get(`/contratos/${id}`);
 #### Lecturas (Brigadista — App Móvil)
 
 ```typescript
-// Obtener lecturas de mi ruta
-const lecturasRuta = (brigadistaId: string) =>
-  api.get(`/lecturas/ruta/${brigadistaId}`);
+// Obtener mi ruta de lecturas
+const lecturasRuta = () => api.get('/lecturas/mi-ruta');
 
-// Registrar una nueva lectura
+// Registrar una nueva lectura (con foto como archivo)
 const registrarLectura = (data: {
   contratoId: string;
   valorLectura: number;
-  fotoUrl?: string;
+  foto?: any; // File/Blob, no un string URL
   latitud?: string;
   longitud?: string;
-}) => api.post('/lecturas', data);
+}) => {
+  const formData = new FormData();
+  formData.append('contratoId', data.contratoId);
+  formData.append('valorLectura', data.valorLectura.toString());
+  if (data.latitud) formData.append('latitud', data.latitud);
+  if (data.longitud) formData.append('longitud', data.longitud);
+  if (data.foto) {
+    formData.append('foto', {
+      uri: data.foto.uri,
+      type: 'image/jpeg',
+      name: 'foto.jpg',
+    } as any);
+  }
+  return api.post('/lecturas', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
 ```
 
 #### Facturas (Ciudadano — App Móvil)
@@ -371,14 +391,30 @@ const misPagos = () => api.get('/pagos/mis-pagos');
 #### Cortes (Brigadista — App Móvil)
 
 ```typescript
-// Registrar un corte de servicio
+// Registrar un corte de servicio (con foto como archivo)
 const registrarCorte = (data: {
   contratoId: string;
   motivo: string;
-  fotoUrl?: string;
+  foto?: any; // File/Blob, no un string URL
   latitud?: string;
   longitud?: string;
-}) => api.post('/cortes', data);
+}) => {
+  const formData = new FormData();
+  formData.append('contratoId', data.contratoId);
+  formData.append('motivo', data.motivo);
+  if (data.latitud) formData.append('latitud', data.latitud);
+  if (data.longitud) formData.append('longitud', data.longitud);
+  if (data.foto) {
+    formData.append('foto', {
+      uri: data.foto.uri,
+      type: 'image/jpeg',
+      name: 'foto.jpg',
+    } as any);
+  }
+  return api.post('/cortes', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
 ```
 
 ---
@@ -463,23 +499,31 @@ async function getCoords() {
 
 // Uso al registrar una lectura:
 const coords = await getCoords();
-await api.post('/lecturas', {
-  contratoId: '123',
-  valorLectura: 150,
-  ...coords,
+const formData = new FormData();
+formData.append('contratoId', '123');
+formData.append('valorLectura', '150');
+if (coords) {
+  formData.append('latitud', coords.latitud);
+  formData.append('longitud', coords.longitud);
+}
+await api.post('/lecturas', formData, {
+  headers: { 'Content-Type': 'multipart/form-data' },
 });
 ```
 
 ---
 
-## 6. Subida de Fotos (Preparación)
+## 6. Subida de Fotos
 
-Los endpoints de lecturas y cortes tienen un campo `fotoUrl`. Actualmente la API recibe la URL como string. Cuando se implemente la subida de archivos:
+Los endpoints de lecturas y cortes aceptan el campo `foto` como archivo (multipart/form-data). La foto se envía directamente junto con los demás datos del formulario:
 
 ```typescript
 import * as ImagePicker from 'expo-image-picker';
 
-async function seleccionarFoto() {
+async function seleccionarYRegistrarLectura(
+  contratoId: string,
+  valorLectura: number,
+) {
   const result = await ImagePicker.launchCameraAsync({
     quality: 0.7,
     base64: false,
@@ -487,20 +531,23 @@ async function seleccionarFoto() {
 
   if (!result.canceled) {
     const formData = new FormData();
+    formData.append('contratoId', contratoId);
+    formData.append('valorLectura', valorLectura.toString());
     formData.append('foto', {
       uri: result.assets[0].uri,
       type: 'image/jpeg',
       name: 'foto.jpg',
     } as any);
 
-    // Subir a la API (cuando esté implementado)
-    const uploadRes = await api.post('/upload', formData, {
+    const response = await api.post('/lecturas', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return uploadRes.data.url;
+    return response.data;
   }
 }
 ```
+
+> **Nota:** No se usa `fotoUrl` como string. La foto se sube como archivo en el mismo request usando `multipart/form-data`. Formatos aceptados: JPEG, PNG, WebP. Tamaño máximo: 5MB.
 
 ---
 
@@ -532,7 +579,7 @@ npx expo install expo-image-picker
 | Pantalla | Endpoint | Método |
 |---|---|---|
 | Login | `/auth/sign-in/email` | POST |
-| Mi ruta de lecturas | `/lecturas/ruta/:brigadistaId` | GET |
+| Mi ruta de lecturas | `/lecturas/mi-ruta` | GET |
 | Registrar lectura | `/lecturas` | POST |
 | Registrar corte | `/cortes` | POST |
 | Ver sesión | `/auth/get-session` | GET |
@@ -557,10 +604,12 @@ npx expo install expo-image-picker
 
 ## 9. Notas Importantes
 
-1. **Sin cookies automáticas** — A diferencia del navegador, React Native no gestiona cookies automáticamente. Debes guardar el `token` de la respuesta de login en `AsyncStorage` y enviarlo manualmente en cada request vía el header `Cookie`.
+1. **Sin cookies automáticas** — A diferencia del navegador, React Native no gestiona cookies automáticamente. Better Auth devuelve el `token` en el body de la respuesta de sign-in/sign-up. Debes guardarlo en `AsyncStorage` y enviarlo manualmente en cada request vía el header `Cookie: better-auth.session_token=<token>`.
 2. **Formato del header Cookie** — El valor debe ser: `better-auth.session_token=<token>`.
-3. **Validación** — La API usa `ValidationPipe` con `whitelist: true`. Cualquier campo extra en el body será rechazado con error 400.
-4. **Prefijo global** — Todas las rutas (excepto `/` health check) empiezan con `/api/`.
-5. **Fechas** — Los campos de fecha usan formato ISO 8601 (`2026-04-19T00:00:00.000Z`).
-6. **Paginación** — Los endpoints de listado aceptan `page` y `limit` como query params.
-7. **Red en emuladores** — Android Emulator usa `10.0.2.2` para acceder al host. iOS Simulator usa `localhost`. Dispositivos físicos necesitan la IP real del equipo.
+3. **Respuesta de mi-ruta** — El endpoint `GET /lecturas/mi-ruta` devuelve cada item con `contrato`, `predio`, `medidor` y `distrito` como objetos separados. La dirección y coordenadas están en `predio`, no en `contrato`.
+4. **Subida de fotos** — Los endpoints de lecturas y cortes usan `multipart/form-data`. El campo `foto` es un archivo (File/Blob), no un string URL.
+5. **Validación** — La API usa `ValidationPipe` con `whitelist: true`. Cualquier campo extra en el body será rechazado con error 400.
+6. **Prefijo global** — Todas las rutas (excepto `/` health check) empiezan con `/api/`.
+7. **Fechas** — Los campos de fecha usan formato ISO 8601 (`2026-04-19T00:00:00.000Z`).
+8. **Paginación** — Los endpoints de listado aceptan `page` y `limit` como query params.
+9. **Red en emuladores** — Android Emulator usa `10.0.2.2` para acceder al host. iOS Simulator usa `localhost`. Dispositivos físicos necesitan la IP real del equipo.

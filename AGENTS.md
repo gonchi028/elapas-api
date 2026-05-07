@@ -35,7 +35,8 @@ NestJS 11 API (TypeScript) for the **ELAPAS Water Utility Management System**. P
 - Source root: `src/`
 - Build output: `dist/`
 - E2E tests: `test/` (separate Jest config at `test/jest-e2e.json`)
-- Design docs: `docs/DD-ELAPAS.md` (full spec), `docs/plan.md` (implementation plan)
+- Design docs: `docs/DD-ELAPAS.md` (full spec), `docs/plan.md` (implementation plan), `docs/db-dbdiagram-code.txt` (DBDiagram DSL)
+- Integration guides: `docs/guia-asignaciones-ruta.md`, `docs/guia-multi-medidor.md`, `docs/guia-subida-fotos.md`, `docs/guia-integracion-react-native.md`, `docs/guia-integracion-react-web.md`
 - Uploads: `uploads/` (gitignored) — photos from lecturas and cortes, served as static files at `/uploads/`
 
 ## Database
@@ -50,7 +51,7 @@ NestJS 11 API (TypeScript) for the **ELAPAS Water Utility Management System**. P
 
 - Library: **Better Auth** (email/password with sessions)
 - Config: `src/auth/auth.ts` — includes `additionalFields` for role/estado
-- `AuthGuard` — session-based, checks `req.session`
+- `AuthGuard` — calls `auth.api.getSession({ headers })` to validate session via Better Auth
 - `RolesGuard` — checks `@Roles()` decorator against `req.user.role`
 - Roles: `admin`, `brigadista`, `ciudadano`
 - Passwords live in the `account` table (Better Auth), not the `user` table
@@ -78,13 +79,15 @@ NestJS 11 API (TypeScript) for the **ELAPAS Water Utility Management System**. P
 ## Common
 
 - `src/common/filters/http-error.filter.ts` — global exception filter (uniform `{ success, error }` response)
+- `src/common/pdf/pdf.service.ts` — PDF generation for facturas
+- `src/common/uploads/upload.config.ts` — multer disk storage config (JPEG/PNG/WebP, 5MB max)
 
 ## Globals (in main.ts)
 
 - `ValidationPipe` — whitelist, forbidNonWhitelisted, transform
 - `HttpErrorFilter` — catches all exceptions, returns uniform JSON
 - CORS enabled
-- Body parser disabled for NestJS (re-added manually) to support Better Auth raw body
+- JSON body parser with 10MB limit via `app.use(json({ limit: '10mb' }))`
 
 ## Conventions
 
