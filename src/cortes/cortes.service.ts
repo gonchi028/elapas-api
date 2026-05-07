@@ -6,7 +6,13 @@ import {
 } from '@nestjs/common';
 import { SQL, eq, and, sql, desc, gte, lte } from 'drizzle-orm';
 import { DB_PROVIDER, type Database } from '../db/connection';
-import { asignacion, corte, contrato, contratoEstadoEnum } from '../db/schema';
+import {
+  asignacion,
+  corte,
+  contrato,
+  contratoEstadoEnum,
+  predio,
+} from '../db/schema';
 
 @Injectable()
 export class CortesService {
@@ -26,7 +32,7 @@ export class CortesService {
     const conditions: (SQL | undefined)[] = [];
 
     if (filters.distritoId) {
-      conditions.push(eq(contrato.distritoId, filters.distritoId));
+      conditions.push(eq(predio.distritoId, filters.distritoId));
     }
 
     if (filters.fechaInicio) {
@@ -46,6 +52,7 @@ export class CortesService {
       .select({ count: sql<number>`count(*)::int` })
       .from(corte)
       .innerJoin(contrato, eq(corte.contratoId, contrato.id))
+      .innerJoin(predio, eq(contrato.predioId, predio.id))
       .where(whereClause);
 
     const total = countResult.count;
@@ -54,6 +61,7 @@ export class CortesService {
       .select()
       .from(corte)
       .innerJoin(contrato, eq(corte.contratoId, contrato.id))
+      .innerJoin(predio, eq(contrato.predioId, predio.id))
       .where(whereClause)
       .orderBy(desc(corte.createdAt))
       .limit(limit)

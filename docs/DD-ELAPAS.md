@@ -98,7 +98,8 @@ Los brigadistas no cuentan con una herramienta digital unificada para registrar 
 │                     PostgreSQL                                  │
 │                                                                 │
 │  usuarios │ contratos │ lecturas │ facturas │ pagos │ cortes    │
-│  tarifas  │ distritos │ roles    │ logs     │ asignaciones     │
+│  tarifas  │ distritos │ predios  │ medidores│ roles │ logs      │
+│  asignaciones                                                   │
 └─────────────────────────────────────────────────────────────────┘
          │
          ▼
@@ -319,66 +320,88 @@ mobile/
 ┌──────────────┐      ┌──────────────────┐   ┌─────────────┐
 │   usuarios   │      │    contratos     │   │  distritos  │
 ├──────────────┤      ├──────────────────┤   ├─────────────┤
-│ id (PK)      │◄─┐   │ id (PK)          │──►│ id (PK)     │
+│ id (PK)      │◄─┐   │ id (PK)          │   │ id (PK)     │
 │ nombre       │  │   │ nro_contrato     │   │ nombre      │
 │ email        │  │   │ usuario_id (FK)  │──┘│ codigo      │
-│ password     │  │   │ distrito_id (FK) │   └─────────────┘
-│ rol          │  │   │ direccion        │
-│ estado       │  │   │ nro_medidor      │        ┌─────────────┐
-│ created_at   │  │   │ latitud          │        │   tarifas   │
-│ updated_at   │  │   │ longitud         │        ├─────────────┤
-└──────────────┘  │   │ estado           │        │ id (PK)     │
-                  │   │ created_at       │        │ nombre      │
-                  │   └────────┬─────────┘        │ tramo_min   │
-                  │            │                  │ tramo_max   │
-                  │            │                  │ precio_m3   │
-                  │            │                  │ cargo_fijo  │
-                  │            │                  │ estado      │
-                  │            │                  └─────────────┘
-                  │            │
-         ┌─────────┘            │
-         │                      │
-         │    ┌─────────────────┴──────────────┐
-         │    │                                │
-         ▼    ▼                                ▼
-┌───────────────┐                     ┌──────────────────┐
-│  lecturas     │                     │    facturas      │
-├───────────────┤                     ├──────────────────┤
-│ id (PK)       │                     │ id (PK)          │
-│ contrato_id   │──► contratos.id     │ contrato_id (FK) │──► contratos.id
-│ brigadista_id │──► usuarios.id      │ lectura_id (FK)  │──► lecturas.id
-│ valor_lectura │                     │ periodo          │
-│ foto_url      │                     │ consumo_m3       │
-│ latitud       │                     │ tarifa_id (FK)   │──► tarifas.id
-│ longitud      │                     │ cargo_fijo       │
-│ fecha_lectura │                     │ subtotal         │
-│ created_at    │                     │ total            │
-└───────────────┘                     │ estado           │
-                                      │ fecha_vencimiento│
-┌───────────────┐                     │ created_at       │
-│   cortes      │                     └────────┬─────────┘
-├───────────────┤                              │
-│ id (PK)       │                              │
-│ contrato_id   │──► contratos.id     ┌────────┴─────────┐
-│ brigadista_id │──► usuarios.id      │     pagos        │
-│ motivo        │                     ├──────────────────┤
-│ foto_url      │                     │ id (PK)          │
-│ latitud       │                     │ factura_id (FK)  │──► facturas.id
-│ longitud      │                     │ monto            │
-│ fecha_corte   │                     │ metodo_pago      │
-│ estado        │                     │ referencia       │
-│ created_at    │                     │ qr_data          │
-└───────────────┘                     │ fecha_pago       │
-                                      │ created_at       │
-┌────────────────┐                    └──────────────────┘
-│  asignaciones  │
-├────────────────┤
-│ id (PK)        │
-│ brigadista_id  │──► usuarios.id
-│ contrato_id    │──► contratos.id
-│ created_at     │
-└────────────────┘
-  UNIQUE(brigadista_id, contrato_id)
+│ password     │  │   │ predio_id (FK)   │──►│             │
+│ rol          │  │   │ medidor_id (FK)  │──┐│             │
+│ estado       │  │   │ estado           │  │└──────┬──────┘
+│ created_at   │  │   │ created_at       │  │       │
+│ updated_at   │  │   └────────┬─────────┘  │       │
+└──────────────┘  │            │             │       │
+                  │            │             │       │
+         ┌─────────┘            │             │       │
+         │                      │             │       │
+         │    ┌─────────────────┘             │       │
+         │    │                               │       │
+         ▼    ▼                               ▼       ▼
+┌───────────────┐                     ┌──────────────┐
+│  lecturas     │                     │   predios    │
+├───────────────┤                     ├──────────────┤
+│ id (PK)       │                     │ id (PK)      │
+│ contrato_id   │──► contratos.id     │ distrito_id  │──► distritos.id
+│ brigadista_id │──► usuarios.id      │ direccion    │
+│ valor_lectura │                     │ latitud      │
+│ foto_url      │                     │ longitud     │
+│ latitud       │                     │ created_at   │
+│ longitud      │                     └──────────────┘
+│ fecha_lectura │
+│ created_at    │                     ┌──────────────┐
+└───────────────┘                     │  medidores   │
+                                      ├──────────────┤
+┌───────────────┐                     │ id (PK)      │
+│   cortes      │                     │ nro_medidor  │
+├───────────────┤                     │ contrato_id  │──► contratos.id
+│ id (PK)       │                     │ created_at   │
+│ contrato_id   │──► contratos.id     └──────────────┘
+│ brigadista_id │──► usuarios.id
+│ motivo        │                     ┌─────────────┐
+│ foto_url      │                     │  tarifas    │
+│ latitud       │                     ├─────────────┤
+│ longitud      │                     │ id (PK)     │
+│ fecha_corte   │                     │ nombre      │
+│ estado        │                     │ tramo_min   │
+│ created_at    │                     │ tramo_max   │
+└───────────────┘                     │ precio_m3   │
+                                      │ cargo_fijo  │
+┌────────────────┐                    │ estado      │
+│  asignaciones  │                    └──────┬──────┘
+├────────────────┤                           │
+│ id (PK)        │                           │
+│ brigadista_id  │──► usuarios.id            │
+│ contrato_id    │──► contratos.id           │
+│ created_at     │                           │
+└────────────────┘                           │
+  UNIQUE(brigadista_id, contrato_id)         │
+                                    ┌────────┴─────────┐
+                                    │    facturas      │
+                                    ├──────────────────┤
+                                    │ id (PK)          │
+                                    │ contrato_id (FK) │──► contratos.id
+                                    │ lectura_id (FK)  │──► lecturas.id
+                                    │ periodo          │
+                                    │ consumo_m3       │
+                                    │ tarifa_id (FK)   │──► tarifas.id
+                                    │ cargo_fijo       │
+                                    │ subtotal         │
+                                    │ total            │
+                                    │ estado           │
+                                    │ fecha_vencimiento│
+                                    │ created_at       │
+                                    └────────┬─────────┘
+                                             │
+                                    ┌────────┴─────────┐
+                                    │     pagos        │
+                                    ├──────────────────┤
+                                    │ id (PK)          │
+                                    │ factura_id (FK)  │──► facturas.id
+                                    │ monto            │
+                                    │ metodo_pago      │
+                                    │ referencia       │
+                                    │ qr_data          │
+                                    │ fecha_pago       │
+                                    │ created_at       │
+                                    └──────────────────┘
 ```
 
 ### 7.2 Definición de Entidades
@@ -408,14 +431,29 @@ mobile/
 | id | UUID | PK, auto | Identificador |
 | nro_contrato | VARCHAR(20) | UNIQUE, NOT NULL | N° visible del contrato |
 | usuario_id | UUID | FK → usuarios | Ciudadano titular |
-| distrito_id | UUID | FK → distritos | Zona de cobertura |
-| direccion | VARCHAR(255) | NOT NULL | Dirección del inmueble |
-| nro_medidor | VARCHAR(30) | UNIQUE, NOT NULL | N° del medidor instalado |
-| latitud | DECIMAL(10,7) | | Coordenada GPS |
-| longitud | DECIMAL(10,7) | | Coordenada GPS |
+| predio_id | UUID | FK → predios | Predio (inmueble) del servicio |
+| medidor_id | UUID | FK → medidores | Medidor instalado |
 | estado | ENUM('activo', 'suspendido', 'cortado') | DEFAULT 'activo' | Estado del servicio |
 | created_at | TIMESTAMP | DEFAULT NOW() | |
 | updated_at | TIMESTAMP | DEFAULT NOW() | |
+
+#### `predios`
+| Campo | Tipo | Restricciones | Descripción |
+|-------|------|---------------|-------------|
+| id | UUID | PK, auto | Identificador |
+| distrito_id | UUID | FK → distritos, NOT NULL | Zona de cobertura |
+| direccion | VARCHAR(255) | NOT NULL | Dirección del inmueble |
+| latitud | DECIMAL(10,7) | | Coordenada GPS |
+| longitud | DECIMAL(10,7) | | Coordenada GPS |
+| created_at | TIMESTAMP | DEFAULT NOW() | |
+
+#### `medidores`
+| Campo | Tipo | Restricciones | Descripción |
+|-------|------|---------------|-------------|
+| id | UUID | PK, auto | Identificador |
+| nro_medidor | VARCHAR(30) | UNIQUE, NOT NULL | N° del medidor |
+| contrato_id | UUID | FK → contratos, NOT NULL | Contrato vinculado |
+| created_at | TIMESTAMP | DEFAULT NOW() | |
 
 #### `tarifas`
 | Campo | Tipo | Restricciones | Descripción |
@@ -514,7 +552,27 @@ mobile/
 | PUT | `/api/usuarios/:id` | Actualizar usuario | Admin |
 | DELETE | `/api/usuarios/:id` | Desactivar usuario | Admin |
 
-### 8.3 Contratos / Catastro
+### 8.3 Predios (Admin)
+
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/predios` | Listar predios (filtrable por distrito, paginado) | Admin |
+| GET | `/api/predios/:id` | Detalle de predio | Admin |
+| POST | `/api/predios` | Crear predio | Admin |
+| PUT | `/api/predios/:id` | Actualizar predio | Admin |
+| DELETE | `/api/predios/:id` | Eliminar predio (solo si no tiene contratos) | Admin |
+
+### 8.4 Medidores (Admin)
+
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/medidores` | Listar medidores (paginado) | Admin |
+| GET | `/api/medidores/:id` | Detalle de medidor | Admin |
+| POST | `/api/medidores` | Crear medidor | Admin |
+| PUT | `/api/medidores/:id` | Actualizar medidor | Admin |
+| DELETE | `/api/medidores/:id` | Eliminar medidor (solo si no está en un contrato) | Admin |
+
+### 8.5 Contratos / Catastro
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
@@ -524,7 +582,7 @@ mobile/
 | POST | `/api/contratos` | Crear contrato | Admin |
 | PUT | `/api/contratos/:id` | Actualizar contrato | Admin |
 
-### 8.4 Lecturas
+### 8.6 Lecturas
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
@@ -534,7 +592,7 @@ mobile/
 | GET | `/api/lecturas/mi-ruta` | Ruta del día: contratos asignados con estado pendiente/leído | Brigadista |
 | GET | `/api/lecturas/ruta/:brigadista_id` | ~~Ruta/contratos asignados al brigadista~~ (DEPRECATED) | Brigadista |
 
-### 8.5 Tarifas
+### 8.7 Tarifas
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
@@ -542,7 +600,7 @@ mobile/
 | POST | `/api/tarifas` | Crear tarifa | Admin |
 | PUT | `/api/tarifas/:id` | Actualizar tarifa | Admin |
 
-### 8.6 Facturación
+### 8.8 Facturación
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
@@ -552,7 +610,7 @@ mobile/
 | GET | `/api/facturas/:id/pdf` | Descargar factura en PDF | Admin, Dueño |
 | POST | `/api/facturas/generar` | Generar facturas masivas para un período | Admin |
 
-### 8.7 Pagos
+### 8.9 Pagos
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
@@ -561,7 +619,7 @@ mobile/
 | GET | `/api/pagos` | Historial de pagos | Admin |
 | GET | `/api/pagos/mis-pagos` | Pagos del ciudadano | Ciudadano |
 
-### 8.8 Cortes
+### 8.10 Cortes
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
@@ -569,7 +627,7 @@ mobile/
 | GET | `/api/cortes` | Listar cortes (filtrable por distrito, fecha) | Admin |
 | GET | `/api/cortes/:id` | Detalle de corte | Admin |
 
-### 8.9 Asignaciones de Ruta
+### 8.11 Asignaciones de Ruta
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
@@ -581,7 +639,7 @@ mobile/
 
 > **Regla de autorización:** Los brigadistas solo pueden registrar lecturas y cortes en contratos que les hayan sido asignados. Intentar operar en un contrato no asignado devuelve 403 Forbidden.
 
-### 8.10 Reportes / Dashboard
+### 8.12 Reportes / Dashboard
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
@@ -590,7 +648,7 @@ mobile/
 | GET | `/api/reportes/cortes-por-distrito` | Cortes agrupados por distrito | Admin |
 | GET | `/api/reportes/lecturas-por-brigadista` | Lecturas por brigadista en rango de fechas | Admin |
 
-### 8.11 Formato de Respuesta Estándar
+### 8.13 Formato de Respuesta Estándar
 
 ```json
 {
@@ -606,7 +664,7 @@ mobile/
 }
 ```
 
-### 8.12 Códigos de Error
+### 8.14 Códigos de Error
 
 | Código | Significado | Uso |
 |--------|------------|-----|

@@ -7,6 +7,7 @@ import {
   lectura,
   corte,
   distrito,
+  predio,
   user,
 } from '../db/schema';
 import { SQL, eq, and, sql, gte, lte, count } from 'drizzle-orm';
@@ -58,7 +59,8 @@ export class ReportesService {
       .from(pago)
       .innerJoin(factura, eq(pago.facturaId, factura.id))
       .innerJoin(contrato, eq(factura.contratoId, contrato.id))
-      .innerJoin(distrito, eq(contrato.distritoId, distrito.id))
+      .innerJoin(predio, eq(contrato.predioId, predio.id))
+      .innerJoin(distrito, eq(predio.distritoId, distrito.id))
       .groupBy(distrito.nombre);
 
     return rows.map((r) => ({
@@ -75,7 +77,8 @@ export class ReportesService {
       })
       .from(corte)
       .innerJoin(contrato, eq(corte.contratoId, contrato.id))
-      .innerJoin(distrito, eq(contrato.distritoId, distrito.id))
+      .innerJoin(predio, eq(contrato.predioId, predio.id))
+      .innerJoin(distrito, eq(predio.distritoId, distrito.id))
       .groupBy(distrito.nombre);
 
     return rows.map((r) => ({
