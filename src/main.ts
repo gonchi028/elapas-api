@@ -4,14 +4,15 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpErrorFilter } from './common/filters/http-error.filter';
-import { json } from 'express';
+import { json, static as serveStatic } from 'express';
+import { join } from 'path';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    bodyParser: false,
-  });
+  const app = await NestFactory.create(AppModule);
 
-  app.use(json({ limit: '10kb' }));
+  app.use(json({ limit: '10mb' }));
+
+  app.use('/uploads', serveStatic(join(process.cwd(), 'uploads')));
 
   app.enableCors({
     origin: true,

@@ -36,6 +36,7 @@ NestJS 11 API (TypeScript) for the **ELAPAS Water Utility Management System**. P
 - Build output: `dist/`
 - E2E tests: `test/` (separate Jest config at `test/jest-e2e.json`)
 - Design docs: `docs/DD-ELAPAS.md` (full spec), `docs/plan.md` (implementation plan)
+- Uploads: `uploads/` (gitignored) — photos from lecturas and cortes, served as static files at `/uploads/`
 
 ## Database
 

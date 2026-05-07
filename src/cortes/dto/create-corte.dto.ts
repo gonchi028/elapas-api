@@ -12,11 +12,6 @@ export class CreateCorteDto {
   @IsNotEmpty()
   motivo: string;
 
-  @ApiPropertyOptional({ description: 'URL de la fotografía' })
-  @IsOptional()
-  @IsString()
-  fotoUrl?: string;
-
   @ApiPropertyOptional({ description: 'Latitud GPS' })
   @IsOptional()
   @IsString()

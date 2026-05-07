@@ -588,9 +588,11 @@ mobile/
 |--------|----------|-------------|------|
 | GET | `/api/lecturas` | Listar lecturas (filtrable por fecha, brigadista) | Admin |
 | GET | `/api/lecturas/:id` | Detalle de lectura | Admin, Brigadista |
-| POST | `/api/lecturas` | Registrar lectura + foto + GPS | Brigadista (solo contratos asignados) |
+| POST | `/api/lecturas` | Registrar lectura + foto (multipart/form-data) + GPS | Brigadista (solo contratos asignados) |
 | GET | `/api/lecturas/mi-ruta` | Ruta del día: contratos asignados con estado pendiente/leído | Brigadista |
 | GET | `/api/lecturas/ruta/:brigadista_id` | ~~Ruta/contratos asignados al brigadista~~ (DEPRECATED) | Brigadista |
+
+> **Subida de fotos:** El endpoint `POST /api/lecturas` acepta `multipart/form-data` con un campo `foto` (archivo JPEG/PNG/WebP, máx 5MB). La imagen se almacena en `uploads/lecturas/` y el campo `fotoUrl` de la lectura se establece con la ruta relativa `/uploads/lecturas/<filename>`. Las imágenes son accesibles vía `GET /uploads/lecturas/<filename>`.
 
 ### 8.7 Tarifas
 
@@ -623,9 +625,11 @@ mobile/
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
-| POST | `/api/cortes` | Registrar corte de servicio | Brigadista |
+| POST | `/api/cortes` | Registrar corte + foto (multipart/form-data) | Brigadista |
 | GET | `/api/cortes` | Listar cortes (filtrable por distrito, fecha) | Admin |
 | GET | `/api/cortes/:id` | Detalle de corte | Admin |
+
+> **Subida de fotos:** El endpoint `POST /api/cortes` acepta `multipart/form-data` con un campo `foto` (archivo JPEG/PNG/WebP, máx 5MB). La imagen se almacena en `uploads/cortes/` y el campo `fotoUrl` se establece con `/uploads/cortes/<filename>`.
 
 ### 8.11 Asignaciones de Ruta
 
